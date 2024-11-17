@@ -1,0 +1,53 @@
+# バイトコード / 最適化されたファイル
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 仮想環境
+.venv/
+
+# パッケージマネージャ関連ファイル
+Pipfile
+Pipfile.lock
+poetry.lock
+
+# Django関連ファイル
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+
+# macOS関連ファイル
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEとエディタ関連
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 環境変数ファイル
+.env
+
+# Logs
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node.js関連
+node_modules
+node_modules/
+dist
+dist-ssr
+*.local
