@@ -1,7 +1,6 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
-import axios from "axios";
+import React from "react";
 
-// Propsの型定義
+// 型定義をインポートまたは上記で定義
 interface Todo {
   id: number;
   title: string;
@@ -9,57 +8,29 @@ interface Todo {
   attachment?: string;
 }
 
-interface TodoFormProps {
-  addTodo: (newTodo: Todo) => void;
+interface TodoItemProps {
+  todo: Todo;
+  toggleTodoCompletion: (id: number, completed: boolean) => void;
 }
 
-const TodoForm: React.FC<TodoFormProps> = ({ addTodo }) => {
-  // useStateの型を明示
-  const [title, setTitle] = useState<string>("");
-  const [file, setFile] = useState<File | null>(null);
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("completed", "false"); // フォームデータは文字列として渡す
-    if (file) formData.append("attachment", file);
-
-    try {
-      const response = await axios.post<Todo>(
-        "http://127.0.0.1:8000/api/todos/",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-      addTodo(response.data);
-      setTitle(""); // フォームをリセット
-      setFile(null);
-    } catch (error) {
-      console.error("Error creating todo:", error);
-    }
-  };
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFile(e.target.files[0]);
-    }
-  };
-
+const TodoItem: React.FC<TodoItemProps> = ({ todo, toggleTodoCompletion }) => {
   return (
-    <form onSubmit={handleSubmit}>
+    <li>
       <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="New Todo"
-        required
+        type="checkbox"
+        checked={todo.completed}
+        onChange={() => toggleTodoCompletion(todo.id, !todo.completed)}
       />
-      <input type="file" onChange={handleFileChange} />
-      <button type="submit">Add Todo</button>
-    </form>
+      <span style={{ display: "inline-flex", gap: "10px" }}>
+        <strong>{todo.title}</strong>
+        {todo.attachment && (
+          <a href={todo.attachment} target="_blank" rel="noopener noreferrer">
+            View Attachment
+          </a>
+        )}
+      </span>
+    </li>
   );
 };
 
-export default TodoForm;
+export default TodoItem;
