@@ -1,6 +1,7 @@
 from django import forms
 from .models import Studio
 
+# 予約リクエストモデル
 class SearchRequestForm(forms.Form):
     studios = forms.ModelMultipleChoiceField(
         queryset=Studio.objects.all(),
