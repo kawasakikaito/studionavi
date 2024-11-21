@@ -28,63 +28,26 @@ class User(models.Model):
     user_id = models.IntegerField(unique=True)  # ユーザーID（ユニーク）
     name = models.CharField(max_length=100)  # ユーザー名
     password = models.CharField(max_length=255)  # パスワード（ハッシュ化推奨）
-    favorite_studio_1 = models.ForeignKey(
-        Studio,  # お気に入りのスタジオ
-        on_delete=models.SET_NULL,  # スタジオが削除された場合はNULLにする
-        null=True,  # データベースでNULLを許可
-        blank=True  # フォームや管理画面で空欄を許可
-    )
-    favorite_studio_2 = models.ForeignKey(
-        Studio,  # お気に入りのスタジオ
-        on_delete=models.SET_NULL,  # スタジオが削除された場合はNULLにする
-        null=True,  # データベースでNULLを許可
-        blank=True  # フォームや管理画面で空欄を許可
-    )
-    favorite_studio_3 = models.ForeignKey(
-        Studio,  # お気に入りのスタジオ
-        on_delete=models.SET_NULL,  # スタジオが削除された場合はNULLにする
-        null=True,  # データベースでNULLを許可
-        blank=True  # フォームや管理画面で空欄を許可
-    )
-    favorite_studio_4 = models.ForeignKey(
-        Studio,  # お気に入りのスタジオ
-        on_delete=models.SET_NULL,  # スタジオが削除された場合はNULLにする
-        null=True,  # データベースでNULLを許可
-        blank=True  # フォームや管理画面で空欄を許可
-    )
-    favorite_studio_5 = models.ForeignKey(
-        Studio,  # お気に入りのスタジオ
-        on_delete=models.SET_NULL,  # スタジオが削除された場合はNULLにする
-        null=True,  # データベースでNULLを許可
-        blank=True  # フォームや管理画面で空欄を許可
-    )
     created_at = models.DateTimeField(auto_now_add=True)  # 作成日時
     updated_at = models.DateTimeField(auto_now=True)  # 更新日時
 
     def __str__(self):
         return self.name
 
-# 予約リクエストモデル
-class SearchRequest(models.Model):
-    studios = models.ManyToManyField(Studio)  # 選択したスタジオ
-    search_start_datetime = models.DateTimeField()  # 検索起点時間
-    search_end_datetime = models.DateTimeField()  # 検索終点時間
-    reservation_time = models.DateTimeField()  # 希望予約時間
-    
-    def __str__(self):
-        return (
-            f"ユーザーID: {self.user_id}, "
-            f"検索期間: {self.search_start_datetime} 〜 {self.search_end_datetime}, "
-            f"希望予約時間: {self.reservation_time}"
-        )
-        
-# 空き状況モデル
-class AvailabilityResult(models.Model):
-    reservation_request = models.ForeignKey(SearchRequest, on_delete=models.CASCADE)  # リクエスト情報
-    studio = models.ForeignKey(Studio, on_delete=models.CASCADE)  # 対象スタジオ
-    is_available = models.BooleanField()  # 空き状況
-    message = models.TextField(blank=True, null=True)  # 追加情報
-    checked_at = models.DateTimeField(auto_now_add=True)  # チェック日時
+# お気に入りスタジオ
+class FavoriteStudio(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorite_studios")
+    studio = models.ForeignKey(Studio, on_delete=models.CASCADE, related_name="favorited_by")
+    created_at = models.DateTimeField(auto_now_add=True)  # 登録日時
+
+    class Meta:
+        unique_together = ('user', 'studio')  # 同じスタジオを重複登録不可
+
+    def save(self, *args, **kwargs):
+        # ユーザーがすでに5つ登録している場合はエラーをスロー
+        if FavoriteStudio.objects.filter(user=self.user).count() >= 5:
+            raise ValueError("お気に入りスタジオは最大5つまでです。")
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.studio.name} - {'Available' if self.is_available else 'Not Available'}"
+        return f"{self.user.name} - {self.studio.name}"
