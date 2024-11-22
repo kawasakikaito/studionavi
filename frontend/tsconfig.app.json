@@ -6,9 +6,9 @@
     "target": "ES2016", // トランスパイルのターゲット
     "jsx": "react-jsx", // React用のJSX設定
     "strict": true, // 厳格モード
-    "baseUrl": "./", // ベースパス
+    "baseUrl": ".",
     "paths": {
-      "*": ["src/*"] // `src` を基準にインポートを解決
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src/**/*"], // `src` 内のすべてのファイルを含む
