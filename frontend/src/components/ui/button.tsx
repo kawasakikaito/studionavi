@@ -7,18 +7,29 @@ const buttonVariants = cva(
   [
     "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black",
-    "data-[state=open]:outline data-[state=open]:outline-2 data-[state=open]:outline-offset-2 data-[state=open]:outline-black",
     "ring-offset-background",
   ].join(" "),
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        default: [
+          "bg-primary text-primary-foreground",
+          "hover:bg-primary/90",
+          "data-[state=open]:bg-primary/90",
+        ].join(" "),
+        destructive: [
+          "bg-destructive text-destructive-foreground",
+          "hover:bg-destructive/90",
+        ].join(" "),
+        outline: [
+          "border border-input bg-background text-foreground",
+          "hover:bg-accent hover:text-accent-foreground",
+          "data-[state=open]:bg-accent/50",
+        ].join(" "),
+        secondary: [
+          "bg-secondary text-secondary-foreground",
+          "hover:bg-secondary/80",
+        ].join(" "),
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },

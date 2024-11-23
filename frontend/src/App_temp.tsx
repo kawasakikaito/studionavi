@@ -374,113 +374,95 @@ const MusicStudioBookingApp = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* 日付選択 */}
-                <div className="sm:col-span-1">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal bg-gray-50 border-gray-200 text-black",
-                          !selectedDate && "text-gray-400"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate
-                          ? format(selectedDate, "yyyy/MM/dd")
-                          : "日付を選択"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        initialFocus
-                        disabled={(date) =>
-                          date < new Date() ||
-                          date >
-                            new Date(
-                              new Date().setMonth(new Date().getMonth() + 2)
-                            )
-                        }
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* 時間選択 */}
-                <div className="sm:col-span-1">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal bg-gray-50 border-gray-200 text-black",
-                          !selectedTime && "text-gray-400"
-                        )}
-                      >
-                        <Clock className="mr-2 h-4 w-4" />
-                        {selectedTime || "予約開始時間を選択"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[200px] p-0 bg-white border-gray-200">
-                      <div className="grid grid-cols-2 gap-2 p-3">
-                        {timeOptions.map((time) => (
-                          <Button
-                            key={time}
-                            variant={
-                              selectedTime === time ? "default" : "outline"
-                            }
-                            onClick={() => setSelectedTime(time)}
-                            className={cn(
-                              "justify-center",
-                              selectedTime === time
-                                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                                : "bg-white hover:bg-gray-50 text-gray-900 border-gray-200"
-                            )}
-                          >
-                            {time}
-                          </Button>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* 利用時間 */}
-                <div className="sm:col-span-1">
-                  <Select
-                    value={selectedDuration}
-                    onValueChange={setSelectedDuration}
-                  >
-                    <SelectTrigger
-                      variant="outline" // 日付選択と同じvariantを設定
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal bg-gray-50 border-gray-200 text-black", // 日付選択と同じクラス
-                        !selectedDuration && "text-gray-400"
+                        "w-full justify-start text-left font-normal",
+                        "bg-gray-50 border-gray-200 hover:bg-gray-100",
+                        "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black focus-visible:outline-none",
+                        selectedDate ? "text-gray-900" : "text-gray-400" // より明示的な文字色の制御
                       )}
                     >
                       <div className="flex items-center justify-start w-full truncate">
-                        <Clock className="mr-2 h-4 w-4 flex-shrink-0" />
-                        <SelectValue
-                          placeholder="利用時間を選択"
-                          className="truncate"
-                        />
+                        <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+                        <span>
+                          {selectedDate
+                            ? format(selectedDate, "yyyy/MM/dd")
+                            : "日付を選択"}
+                        </span>
                       </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {durationOptions.map((duration) => (
-                        <SelectItem
-                          key={duration}
-                          value={duration}
-                          className="hover:bg-gray-100"
-                        >
-                          {duration}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-white" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      initialFocus
+                      disabled={(date) =>
+                        date < new Date() ||
+                        date >
+                          new Date(
+                            new Date().setMonth(new Date().getMonth() + 2)
+                          )
+                      }
+                      className="rounded-md border-0"
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {/* 時間選択 */}
+                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <SelectTrigger
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      "bg-gray-50 border-gray-200 hover:bg-gray-100",
+                      "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black focus-visible:outline-none",
+                      !selectedTime && "text-gray-400"
+                    )}
+                  >
+                    <div className="flex items-center justify-start w-full truncate">
+                      <Clock className="mr-2 h-4 w-4 flex-shrink-0" />
+                      <SelectValue placeholder="予約開始時間を選択" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {time}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* 利用時間 */}
+                <Select
+                  value={selectedDuration}
+                  onValueChange={setSelectedDuration}
+                >
+                  <SelectTrigger
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      "bg-gray-50 border-gray-200 hover:bg-gray-100",
+                      "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black focus-visible:outline-none",
+                      !selectedDuration && "text-gray-400"
+                    )}
+                  >
+                    <div className="flex items-center justify-start w-full truncate">
+                      <Clock className="mr-2 h-4 w-4 flex-shrink-0" />
+                      <SelectValue placeholder="利用時間を選択" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    {durationOptions.map((duration) => (
+                      <SelectItem key={duration} value={duration}>
+                        {duration}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Button
