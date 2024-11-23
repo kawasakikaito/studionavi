@@ -9,13 +9,23 @@ const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;
 
 const selectTriggerVariants = cva(
-  "inline-flex items-center justify-between whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  [
+    "inline-flex items-center justify-between whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors disabled:pointer-events-none disabled:opacity-50",
+    "focus:outline-2 focus:outline-offset-2 focus:outline-black",
+    "data-[state=open]:outline-2 data-[state=open]:outline-offset-2 data-[state=open]:outline-black",
+    "data-[state=closed]:outline-none",
+    "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  ].join(" "),
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        outline:
+        outline: [
           "border border-input bg-background hover:bg-accent h-10 px-4 py-2 w-full",
+          "focus-visible:outline focus-visible:outline-black",
+          "data-[state=open]:outline data-[state=open]:outline-black",
+          "data-[state=closed]:outline-none",
+        ].join(" "),
       },
     },
     defaultVariants: {
