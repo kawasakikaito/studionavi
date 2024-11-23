@@ -14,6 +14,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -21,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -93,6 +93,8 @@ const timeOptions = [
   "22:00",
 ];
 
+const durationOptions = ["1時間", "2時間", "3時間", "4時間", "5時間"];
+
 const MusicStudioBookingApp = () => {
   const [selectedStudios, setSelectedStudios] = useState([
     PRESET_STUDIOS[0],
@@ -101,6 +103,7 @@ const MusicStudioBookingApp = () => {
   ]);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("");
+  const [selectedDuration, setSelectedDuration] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchResultsOpen, setIsSearchResultsOpen] = useState(false);
@@ -119,7 +122,6 @@ const MusicStudioBookingApp = () => {
       );
     });
   }, [searchQuery, selectedStudios]);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -153,9 +155,11 @@ const MusicStudioBookingApp = () => {
     setSelectedStudios([]);
     setSelectedDate(undefined);
     setSelectedTime("");
+    setSelectedDuration("");
     setSearchPerformed(false);
     setSearchQuery("");
   };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -229,7 +233,6 @@ const MusicStudioBookingApp = () => {
           </div>
         </div>
       )}
-
       {/* Main content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {/* Hero section */}
@@ -286,7 +289,6 @@ const MusicStudioBookingApp = () => {
                     disabled={selectedStudios.length >= 5}
                   />
                 </div>
-
                 {isSearchResultsOpen && searchResults.length > 0 && (
                   <Card className="absolute z-50 w-full mt-2 border-0 shadow-lg bg-white">
                     <CardContent className="p-2">
@@ -361,7 +363,8 @@ const MusicStudioBookingApp = () => {
               </div>
             </CardContent>
           </Card>
-          {/* Date selection */}
+
+          {/* Date and Time Selection */}
           <Card className="border-0 shadow-lg bg-white">
             <CardHeader className="border-b border-gray-100">
               <CardTitle className="text-2xl text-gray-900">
@@ -377,7 +380,7 @@ const MusicStudioBookingApp = () => {
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal bg-gray-50 border-gray-200",
+                          "w-full justify-start text-left font-normal bg-gray-50 border-gray-200 text-black",
                           !selectedDate && "text-gray-400"
                         )}
                       >
@@ -417,10 +420,10 @@ const MusicStudioBookingApp = () => {
                         )}
                       >
                         <Clock className="mr-2 h-4 w-4" />
-                        {selectedTime || "時間を選択"}
+                        {selectedTime || "予約開始時間を選択"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[200px] p-0">
+                    <PopoverContent className="w-[200px] p-0 bg-white border-gray-200">
                       <div className="grid grid-cols-2 gap-2 p-3">
                         {timeOptions.map((time) => (
                           <Button
@@ -431,8 +434,9 @@ const MusicStudioBookingApp = () => {
                             onClick={() => setSelectedTime(time)}
                             className={cn(
                               "justify-center",
-                              selectedTime === time &&
-                                "bg-indigo-600 hover:bg-indigo-700"
+                              selectedTime === time
+                                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                : "bg-white hover:bg-gray-50 text-gray-900 border-gray-200"
                             )}
                           >
                             {time}
@@ -445,16 +449,35 @@ const MusicStudioBookingApp = () => {
 
                 {/* 利用時間 */}
                 <div className="sm:col-span-1">
-                  <Select defaultValue="">
-                    <SelectTrigger className="w-full bg-gray-50 border-gray-200 text-gray-500">
-                      <SelectValue placeholder="利用したい時間を選択してください" />
+                  <Select
+                    value={selectedDuration}
+                    onValueChange={setSelectedDuration}
+                  >
+                    <SelectTrigger
+                      variant="outline" // 日付選択と同じvariantを設定
+                      className={cn(
+                        "w-full justify-start text-left font-normal bg-gray-50 border-gray-200 text-black", // 日付選択と同じクラス
+                        !selectedDuration && "text-gray-400"
+                      )}
+                    >
+                      <div className="flex items-center justify-start w-full truncate">
+                        <Clock className="mr-2 h-4 w-4 flex-shrink-0" />
+                        <SelectValue
+                          placeholder="利用時間を選択"
+                          className="truncate"
+                        />
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">1時間</SelectItem>
-                      <SelectItem value="2">2時間</SelectItem>
-                      <SelectItem value="3">3時間</SelectItem>
-                      <SelectItem value="4">4時間</SelectItem>
-                      <SelectItem value="5">5時間</SelectItem>
+                      {durationOptions.map((duration) => (
+                        <SelectItem
+                          key={duration}
+                          value={duration}
+                          className="hover:bg-gray-100"
+                        >
+                          {duration}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -472,7 +495,7 @@ const MusicStudioBookingApp = () => {
             </CardContent>
           </Card>
 
-          {/* Search results */}
+          {/* Search Results */}
           {searchPerformed && (
             <Card className="border-0 shadow-lg bg-white">
               <CardHeader className="border-b border-gray-100">
