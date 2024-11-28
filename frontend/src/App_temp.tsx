@@ -23,13 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, mainGradient } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ja } from "date-fns/locale";
 
 interface Studio {
   id: number;
@@ -122,6 +123,7 @@ const MusicStudioBookingApp = () => {
       );
     });
   }, [searchQuery, selectedStudios]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -161,42 +163,40 @@ const MusicStudioBookingApp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="bg-background border-b">
+        <div className="container mx-auto">
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">
-                  スタジオナビ
-                </h1>
+                <h1 className="text-xl font-bold">スタジオナビ</h1>
               </div>
               <nav className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <a className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                <a className="border-primary text-foreground inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   スタジオを探す
                 </a>
-                <a className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                <a className="border-transparent text-muted-foreground hover:text-foreground inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   料金案内
                 </a>
-                <a className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                <a className="border-transparent text-muted-foreground hover:text-foreground inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   設備情報
                 </a>
               </nav>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
-              <Button variant="default" className="text-gray-600">
+              <Button variant="outline">
                 <LogIn className="h-4 w-4 mr-2" />
                 ログイン
               </Button>
-              <Button className="bg-indigo-600 text-white hover:bg-indigo-700">
+              <Button variant="gradient">
                 <User className="h-4 w-4 mr-2" />
                 新規登録
               </Button>
             </div>
             <div className="flex items-center sm:hidden">
               <Button
-                variant="ghost"
+                variant="default"
                 size="icon"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
@@ -206,37 +206,37 @@ const MusicStudioBookingApp = () => {
           </div>
         </div>
       </header>
-
       {/* Mobile menu */}
       {isMobileMenuOpen && (
-        <div className="sm:hidden bg-white shadow-lg">
+        <div className="sm:hidden bg-background border-b">
           <div className="pt-2 pb-3 space-y-1">
-            <a className="bg-indigo-50 border-indigo-500 text-indigo-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
+            <a className="bg-primary/10 border-primary text-primary block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
               スタジオを探す
             </a>
-            <a className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
+            <a className="border-transparent text-muted-foreground hover:bg-accent hover:text-foreground block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
               料金案内
             </a>
-            <a className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
+            <a className="border-transparent text-muted-foreground hover:bg-accent hover:text-foreground block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
               設備情報
             </a>
           </div>
-          <div className="pt-4 pb-3 border-t border-gray-200">
+          <div className="pt-4 pb-3 border-t">
             <div className="space-y-1">
-              <a className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50">
+              <a className="block px-4 py-2 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent">
                 ログイン
               </a>
-              <a className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50">
+              <a className="block px-4 py-2 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent">
                 新規登録
               </a>
             </div>
           </div>
         </div>
       )}
+
       {/* Main content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="container mx-auto py-6">
         {/* Hero section */}
-        <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-lg shadow-xl mb-8 p-8 text-white">
+        <div className={cn(mainGradient, "mb-8 p-8 text-white")}>
           <h2 className="text-3xl font-bold mb-4">
             スタジオ予約をもっと簡単に
           </h2>
@@ -248,7 +248,7 @@ const MusicStudioBookingApp = () => {
               ご利用ガイド
             </Button>
             <Button
-              variant="outline"
+              variant="default"
               className="text-white border-white hover:bg-white/10"
             >
               よくある質問
@@ -258,24 +258,17 @@ const MusicStudioBookingApp = () => {
 
         {/* Studio selection */}
         <div className="space-y-8">
-          <Card className="border-0 shadow-lg bg-white">
-            <CardHeader className="border-b border-gray-100">
+          <Card>
+            <CardHeader className="border-b">
               <div className="flex justify-between items-center">
-                <CardTitle className="text-2xl text-gray-900">
-                  選択中のスタジオ
-                </CardTitle>
-                <Badge
-                  variant="secondary"
-                  className="text-lg px-4 py-1 bg-gray-100 text-gray-500"
-                >
-                  {selectedStudios.length}/5
-                </Badge>
+                <CardTitle className="text-2xl">選択中のスタジオ</CardTitle>
+                <Badge variant="secondary">{selectedStudios.length}/5</Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
               <div className="relative" ref={searchRef}>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="text"
                     value={searchQuery}
@@ -285,55 +278,52 @@ const MusicStudioBookingApp = () => {
                     }}
                     onFocus={() => setIsSearchResultsOpen(true)}
                     placeholder="スタジオを検索して追加..."
-                    className="pl-10 bg-gray-50 border-gray-200 placeholder:text-gray-400"
+                    className="pl-10"
                     disabled={selectedStudios.length >= 5}
                   />
                 </div>
                 {isSearchResultsOpen && searchResults.length > 0 && (
-                  <Card className="absolute z-50 w-full mt-2 border-0 shadow-lg bg-white">
+                  <Card className="absolute z-50 w-full mt-2">
                     <CardContent className="p-2">
                       {searchResults.map((studio) => (
-                        <button
+                        <Button
                           key={studio.id}
                           onClick={() => addStudio(studio)}
-                          className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                          variant="ghost"
+                          className="w-full justify-start h-auto py-3 px-3"
                         >
-                          <div className="font-medium text-gray-900">
-                            {studio.name}
+                          <div>
+                            <div className="font-medium">{studio.name}</div>
+                            <div className="text-sm text-muted-foreground flex items-center mt-1">
+                              <MapPin className="h-4 w-4 mr-1" />
+                              {studio.address}
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-500 flex items-center mt-1">
-                            <MapPin className="h-4 w-4 mr-1" />
-                            {studio.address}
-                          </div>
-                        </button>
+                        </Button>
                       ))}
                     </CardContent>
                   </Card>
                 )}
               </div>
-
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {selectedStudios.map((studio) => (
-                  <Card
-                    key={studio.id}
-                    className="border border-gray-200 bg-gray-50 shadow-md hover:shadow-lg transition-shadow"
-                  >
+                  <Card key={studio.id}>
                     <CardContent className="p-6">
                       <div className="flex justify-between items-start">
                         <div className="space-y-4">
-                          <h3 className="text-lg font-semibold text-gray-900">
+                          <h3 className="text-lg font-semibold">
                             {studio.name}
                           </h3>
                           <div className="space-y-2 text-sm">
-                            <div className="flex items-center text-gray-600">
+                            <div className="flex items-center text-muted-foreground">
                               <MapPin className="h-4 w-4 mr-2" />
                               {studio.address}
                             </div>
-                            <div className="flex items-center text-gray-600">
+                            <div className="flex items-center text-muted-foreground">
                               <Clock className="h-4 w-4 mr-2" />
                               {studio.hours}
                             </div>
-                            <div className="flex items-center text-gray-600">
+                            <div className="flex items-center text-muted-foreground">
                               <Calendar className="h-4 w-4 mr-2" />
                               {studio.bookingStart}
                             </div>
@@ -343,7 +333,6 @@ const MusicStudioBookingApp = () => {
                           variant="destructive"
                           size="icon"
                           onClick={() => removeStudio(studio.id)}
-                          className="text-red-500 hover:text-red-500"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -353,9 +342,9 @@ const MusicStudioBookingApp = () => {
                 ))}
 
                 {selectedStudios.length === 0 && (
-                  <div className="col-span-full text-center py-12 bg-gray-50 rounded-lg">
-                    <Plus className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-500">
+                  <div className="col-span-full text-center py-12 bg-muted rounded-lg">
+                    <Plus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">
                       スタジオを検索して追加してください
                     </p>
                   </div>
@@ -365,13 +354,11 @@ const MusicStudioBookingApp = () => {
           </Card>
 
           {/* Date and Time Selection */}
-          <Card className="border-0 shadow-lg bg-white">
-            <CardHeader className="border-b border-gray-100">
-              <CardTitle className="text-2xl text-gray-900">
-                日時を選択
-              </CardTitle>
+          <Card>
+            <CardHeader className="border-b">
+              <CardTitle className="text-2xl">日時を選択</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* 日付選択 */}
                 <Popover>
@@ -379,36 +366,31 @@ const MusicStudioBookingApp = () => {
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
-                        "bg-gray-50 border-gray-200 hover:bg-gray-100",
-                        "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black focus-visible:outline-none",
-                        selectedDate ? "text-gray-900" : "text-gray-400" // より明示的な文字色の制御
+                        "w-full justify-start",
+                        !selectedDate && "text-muted-foreground"
                       )}
                     >
-                      <div className="flex items-center justify-start w-full truncate">
-                        <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
-                        <span>
-                          {selectedDate
-                            ? format(selectedDate, "yyyy/MM/dd")
-                            : "日付を選択"}
-                        </span>
-                      </div>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate
+                        ? format(selectedDate, "yyyy年MM月dd日 (eee)", {
+                            locale: ja,
+                          })
+                        : "日付を選択"}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-white" align="start">
+                  <PopoverContent className="w-auto p-0" align="start">
                     <CalendarComponent
                       mode="single"
                       selected={selectedDate}
                       onSelect={setSelectedDate}
                       initialFocus
                       disabled={(date) =>
-                        date < new Date() ||
+                        date < new Date(new Date().setHours(0, 0, 0, 0)) ||
                         date >
                           new Date(
                             new Date().setMonth(new Date().getMonth() + 2)
                           )
                       }
-                      className="rounded-md border-0"
                     />
                   </PopoverContent>
                 </Popover>
@@ -417,14 +399,12 @@ const MusicStudioBookingApp = () => {
                 <Select value={selectedTime} onValueChange={setSelectedTime}>
                   <SelectTrigger
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      "bg-gray-50 border-gray-200 hover:bg-gray-100",
-                      "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black focus-visible:outline-none",
-                      !selectedTime && "text-gray-400"
+                      "w-full",
+                      !selectedTime && "text-muted-foreground"
                     )}
                   >
-                    <div className="flex items-center justify-start w-full truncate">
-                      <Clock className="mr-2 h-4 w-4 flex-shrink-0" />
+                    <div className="flex items-center">
+                      <Clock className="mr-2 h-4 w-4" />
                       <SelectValue placeholder="予約開始時間を選択" />
                     </div>
                   </SelectTrigger>
@@ -444,18 +424,16 @@ const MusicStudioBookingApp = () => {
                 >
                   <SelectTrigger
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      "bg-gray-50 border-gray-200 hover:bg-gray-100",
-                      "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black focus-visible:outline-none",
-                      !selectedDuration && "text-gray-400"
+                      "w-full",
+                      !selectedDuration && "text-muted-foreground"
                     )}
                   >
-                    <div className="flex items-center justify-start w-full truncate">
-                      <Clock className="mr-2 h-4 w-4 flex-shrink-0" />
+                    <div className="flex items-center">
+                      <Clock className="mr-2 h-4 w-4" />
                       <SelectValue placeholder="利用時間を選択" />
                     </div>
                   </SelectTrigger>
-                  <SelectContent align="start">
+                  <SelectContent>
                     {durationOptions.map((duration) => (
                       <SelectItem key={duration} value={duration}>
                         {duration}
@@ -466,7 +444,7 @@ const MusicStudioBookingApp = () => {
               </div>
 
               <Button
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="w-full"
                 disabled={
                   !selectedDate || !selectedTime || selectedStudios.length === 0
                 }
@@ -476,60 +454,50 @@ const MusicStudioBookingApp = () => {
               </Button>
             </CardContent>
           </Card>
-
           {/* Search Results */}
           {searchPerformed && (
-            <Card className="border-0 shadow-lg bg-white">
-              <CardHeader className="border-b border-gray-100">
-                <CardTitle className="text-2xl text-gray-900">
-                  空き状況
-                </CardTitle>
+            <Card>
+              <CardHeader className="border-b">
+                <CardTitle className="text-2xl">空き状況</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 pt-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {selectedStudios.map((studio) => (
-                    <Card
-                      key={studio.id}
-                      className="border border-gray-200 bg-gray-50 shadow-md hover:shadow-lg transition-shadow"
-                    >
+                    <Card key={studio.id}>
                       <CardContent className="p-6">
                         <div className="space-y-4">
                           <div>
-                            <h3 className="text-lg font-semibold text-gray-900">
+                            <h3 className="text-lg font-semibold">
                               {studio.name}
                             </h3>
                             <div className="mt-4 space-y-2 text-sm">
-                              <div className="flex items-center text-gray-600">
+                              <div className="flex items-center text-muted-foreground">
                                 <MapPin className="h-4 w-4 mr-2" />
                                 {studio.address}
                               </div>
-                              <div className="flex items-center text-gray-600">
+                              <div className="flex items-center text-muted-foreground">
                                 <Clock className="h-4 w-4 mr-2" />
                                 {studio.hours}
                               </div>
                               <div className="flex items-center">
                                 <Calendar className="h-4 w-4 mr-2" />
-                                <span className="text-blue-600">
+                                <span className="text-primary">
                                   {selectedDate &&
                                     format(selectedDate, "yyyy/MM/dd")}{" "}
                                   {selectedTime}
                                 </span>
                               </div>
-                              <Badge variant="success" className="mt-2">
+                              <Badge
+                                variant="secondary"
+                                className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                              >
                                 予約可能
                               </Badge>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
-                            <Button
-                              variant="default"
-                              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            >
-                              Web予約
-                            </Button>
-                            <Button variant="secondary" className="bg-gray-100">
-                              電話予約
-                            </Button>
+                            <Button variant="gradient">Web予約</Button>
+                            <Button variant="outline">電話予約</Button>
                           </div>
                         </div>
                       </CardContent>
@@ -538,7 +506,7 @@ const MusicStudioBookingApp = () => {
                 </div>
                 <Button
                   variant="outline"
-                  className="w-full border-2 border-gray-200 text-gray-900"
+                  className="w-full"
                   onClick={resetSearch}
                 >
                   新しく検索
@@ -549,19 +517,17 @@ const MusicStudioBookingApp = () => {
         </div>
 
         {/* Footer */}
-        <footer className="mt-16 pt-8 border-t border-gray-200">
+        <footer className="mt-16 pt-8 border-t">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                スタジオナビ
-              </h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="text-lg font-semibold">スタジオナビ</h3>
+              <p className="text-sm text-muted-foreground">
                 音楽スタジオの検索・予約を、もっと快適に。
               </p>
             </div>
             <div>
-              <h4 className="font-medium mb-4 text-gray-900">サービス</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
+              <h4 className="font-medium mb-4">サービス</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>スタジオ検索</li>
                 <li>料金案内</li>
                 <li>設備情報</li>
@@ -569,8 +535,8 @@ const MusicStudioBookingApp = () => {
               </ul>
             </div>
             <div>
-              <h4 className="font-medium mb-4 text-gray-900">サポート</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
+              <h4 className="font-medium mb-4">サポート</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>よくある質問</li>
                 <li>お問い合わせ</li>
                 <li>利用規約</li>
@@ -578,8 +544,8 @@ const MusicStudioBookingApp = () => {
               </ul>
             </div>
             <div>
-              <h4 className="font-medium mb-4 text-gray-900">運営会社</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
+              <h4 className="font-medium mb-4">運営会社</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>会社概要</li>
                 <li>採用情報</li>
                 <li>ニュース</li>
@@ -587,8 +553,8 @@ const MusicStudioBookingApp = () => {
               </ul>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t border-gray-200">
-            <p className="text-center text-sm text-gray-500">
+          <div className="mt-8 pt-8 border-t">
+            <p className="text-center text-sm text-muted-foreground">
               © 2024 スタジオナビ. All rights reserved.
             </p>
           </div>
