@@ -22,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 import { format } from "date-fns";
 import { cn, mainGradient } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -168,11 +176,12 @@ const MusicStudioBookingApp = () => {
       <header className="bg-background border-b">
         <div className="container mx-auto">
           <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
                 <h1 className="text-xl font-bold">スタジオナビ</h1>
               </div>
-              <nav className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              {/* Desktop Navigation */}
+              <nav className="hidden md:ml-6 md:flex md:space-x-8">
                 <a className="border-primary text-foreground inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   スタジオを探す
                 </a>
@@ -184,54 +193,66 @@ const MusicStudioBookingApp = () => {
                 </a>
               </nav>
             </div>
-            <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
-              <Button variant="outline">
+
+            {/* Desktop Buttons */}
+            <div className="hidden md:flex md:items-center md:space-x-4">
+              <Button variant="outline" className="h-9">
                 <LogIn className="h-4 w-4 mr-2" />
                 ログイン
               </Button>
-              <Button variant="gradient">
+              <Button variant="gradient" className="h-9">
                 <User className="h-4 w-4 mr-2" />
                 新規登録
               </Button>
             </div>
-            <div className="flex items-center sm:hidden">
-              <Button
-                variant="default"
-                size="icon"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              >
-                <Menu className="h-6 w-6" />
-              </Button>
+
+            {/* Mobile Menu */}
+            <div className="flex items-center md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="default" size="icon" className="h-9 w-9">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-80">
+                  <SheetHeader>
+                    <SheetTitle>メニュー</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col space-y-4 mt-6">
+                    <div className="space-y-3">
+                      <a className="flex items-center text-sm font-medium text-primary">
+                        スタジオを探す
+                      </a>
+                      <a className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground">
+                        料金案内
+                      </a>
+                      <a className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground">
+                        設備情報
+                      </a>
+                    </div>
+                    <div className="pt-6 border-t space-y-3">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start h-9"
+                      >
+                        <LogIn className="h-4 w-4 mr-2" />
+                        ログイン
+                      </Button>
+                      <Button
+                        variant="gradient"
+                        className="w-full justify-start h-9"
+                      >
+                        <User className="h-4 w-4 mr-2" />
+                        新規登録
+                      </Button>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
       </header>
-      {/* Mobile menu */}
-      {isMobileMenuOpen && (
-        <div className="sm:hidden bg-background border-b">
-          <div className="pt-2 pb-3 space-y-1">
-            <a className="bg-primary/10 border-primary text-primary block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-              スタジオを探す
-            </a>
-            <a className="border-transparent text-muted-foreground hover:bg-accent hover:text-foreground block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-              料金案内
-            </a>
-            <a className="border-transparent text-muted-foreground hover:bg-accent hover:text-foreground block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-              設備情報
-            </a>
-          </div>
-          <div className="pt-4 pb-3 border-t">
-            <div className="space-y-1">
-              <a className="block px-4 py-2 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent">
-                ログイン
-              </a>
-              <a className="block px-4 py-2 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent">
-                新規登録
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main content */}
       <main className="container mx-auto py-6">
@@ -317,15 +338,21 @@ const MusicStudioBookingApp = () => {
                           <div className="space-y-2 text-sm">
                             <div className="flex items-center text-muted-foreground">
                               <MapPin className="h-4 w-4 mr-2" />
-                              {studio.address}
+                              <span className="flex-1">
+                                所在地：{studio.address}
+                              </span>
                             </div>
                             <div className="flex items-center text-muted-foreground">
                               <Clock className="h-4 w-4 mr-2" />
-                              {studio.hours}
+                              <span className="flex-1">
+                                営業時間：{studio.hours}
+                              </span>
                             </div>
                             <div className="flex items-center text-muted-foreground">
                               <Calendar className="h-4 w-4 mr-2" />
-                              {studio.bookingStart}
+                              <span className="flex-1">
+                                予約開始：{studio.bookingStart}
+                              </span>
                             </div>
                           </div>
                         </div>
