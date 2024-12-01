@@ -32,6 +32,7 @@ import {
   SheetTitle,
   SheetTrigger,
   SheetClose,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -201,7 +202,7 @@ const MusicStudioBookingApp = () => {
               </Button>
             </div>
 
-            {/* Mobile Menu */}
+            {/* Mobile Menu - Sheetコンポーネントを更新 */}
             <div className="flex items-center md:hidden">
               <Sheet>
                 <SheetTrigger asChild>
@@ -212,6 +213,9 @@ const MusicStudioBookingApp = () => {
                 <SheetContent side="right">
                   <SheetHeader>
                     <SheetTitle>メニュー</SheetTitle>
+                    <SheetDescription>
+                      スタジオナビのメニューです。アカウント管理や各種設定にアクセスできます。
+                    </SheetDescription>
                   </SheetHeader>
                   <div className="flex flex-col space-y-4 mt-6">
                     <div className="space-y-3">
@@ -228,7 +232,7 @@ const MusicStudioBookingApp = () => {
                         ログイン
                       </Button>
                       <Button
-                        variant="default"
+                        variant="gradient"
                         className="w-full justify-start h-9"
                       >
                         <User className="h-4 w-4 mr-2" />
@@ -357,6 +361,7 @@ const MusicStudioBookingApp = () => {
               </div>
             </CardContent>
           </Card>
+
           {/* Date and Time Selection */}
           <Card>
             <CardHeader>
@@ -368,84 +373,90 @@ const MusicStudioBookingApp = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-10 gap-4">
                 {/* Date Picker */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left",
-                        !selectedDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedDate
-                        ? format(selectedDate, "yyyy年MM月dd日 (eee)", {
-                            locale: ja,
-                          })
-                        : "日付を選択"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      initialFocus
-                      disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0)) ||
-                        date >
-                          new Date(
-                            new Date().setMonth(new Date().getMonth() + 2)
-                          )
-                      }
-                    />
-                  </PopoverContent>
-                </Popover>
+                <div className="col-span-4">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="h-4 w-4" />
+                        {selectedDate
+                          ? format(selectedDate, "yyyy年MM月dd日 (eee)", {
+                              locale: ja,
+                            })
+                          : "日付を選択"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        initialFocus
+                        disabled={(date) =>
+                          date < new Date(new Date().setHours(0, 0, 0, 0)) ||
+                          date >
+                            new Date(
+                              new Date().setMonth(new Date().getMonth() + 2)
+                            )
+                        }
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
 
                 {/* Time Selection */}
-                <Select value={selectedTime} onValueChange={setSelectedTime}>
-                  <SelectTrigger
-                    className={cn(
-                      "w-full",
-                      !selectedTime && "text-muted-foreground"
-                    )}
-                  >
-                    <Clock className="mr-2 h-4 w-4" />
-                    <SelectValue placeholder="開始時間を選択" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {time}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="col-span-3">
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger
+                      className={cn(
+                        "w-full text-left justify-start",
+                        !selectedTime && "text-muted-foreground"
+                      )}
+                    >
+                      <Clock className="mr-2 h-4 w-4" />
+                      <SelectValue placeholder="開始時間を選択" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {/* Duration Selection */}
-                <Select
-                  value={selectedDuration}
-                  onValueChange={setSelectedDuration}
-                >
-                  <SelectTrigger
-                    className={cn(
-                      "w-full",
-                      !selectedDuration && "text-muted-foreground"
-                    )}
+                <div className="col-span-3">
+                  <Select
+                    value={selectedDuration}
+                    onValueChange={setSelectedDuration}
                   >
-                    <Clock className="mr-2 h-4 w-4" />
-                    <SelectValue placeholder="利用時間を選択" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {durationOptions.map((duration) => (
-                      <SelectItem key={duration} value={duration}>
-                        {duration}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <SelectTrigger
+                      className={cn(
+                        "w-full text-left justify-start",
+                        !selectedDuration && "text-muted-foreground"
+                      )}
+                    >
+                      <Clock className="mr-2 h-4 w-4" />
+                      <SelectValue placeholder="利用時間を選択" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {durationOptions.map((duration) => (
+                        <SelectItem key={duration} value={duration}>
+                          {duration}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <Button
@@ -463,86 +474,90 @@ const MusicStudioBookingApp = () => {
               </Button>
             </CardContent>
           </Card>
-          {/* 検索結果 */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl sm:text-2xl">
-                    検索結果
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedStudios.length}件のスタジオが見つかりました
-                  </p>
+          {/* Search Results */}
+          {searchPerformed && (
+            <Card>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl">検索結果</CardTitle>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span>
+                    {format(selectedDate!, "yyyy年MM月dd日 (eee)", {
+                      locale: ja,
+                    })}
+                  </span>
+                  <span>•</span>
+                  <span>{selectedTime}</span>
+                  <span>•</span>
+                  <span>{selectedDuration}</span>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {selectedStudios.map((studio) => (
-                  <div key={studio.id} className="p-4 sm:p-6">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold">
-                            {studio.name}
-                          </h3>
-                          <div className="mt-2 space-y-1.5">
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-                              <span className="truncate">{studio.address}</span>
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
-                              <span>{studio.hours}</span>
-                            </div>
-                            <div className="flex items-center text-sm text-primary font-medium">
-                              <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-                              <span>
-                                {selectedDate &&
-                                  format(selectedDate, "yyyy/MM/dd")}{" "}
-                                {selectedTime} 〜
-                              </span>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {selectedStudios.map((studio) => (
+                    <Card key={studio.id} className="flex flex-col">
+                      <CardContent className="flex-1 p-4">
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="text-lg font-semibold line-clamp-1">
+                              {studio.name}
+                            </h3>
+                            <div className="mt-3 space-y-2">
+                              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span className="line-clamp-2">
+                                  {studio.address}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Clock className="h-4 w-4 flex-shrink-0" />
+                                <span>{studio.hours}</span>
+                              </div>
+                              <div className="pt-2">
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                                >
+                                  予約可能
+                                </Badge>
+                              </div>
                             </div>
                           </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Button
+                              className="w-full flex items-center justify-center gap-2"
+                              variant="gradient"
+                            >
+                              <Globe className="h-4 w-4" />
+                              <span className="hidden sm:inline">Web</span>予約
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="w-full flex items-center justify-center gap-2"
+                            >
+                              <Phone className="h-4 w-4" />
+                              <span className="hidden sm:inline">電話</span>予約
+                            </Button>
+                          </div>
                         </div>
-                        <Badge
-                          variant="secondary"
-                          className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                        >
-                          予約可能
-                        </Badge>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                        <Button className="flex-1 h-10" variant="default">
-                          <Globe className="h-4 w-4 mr-2" />
-                          Web予約
-                        </Button>
-                        <Button className="flex-1 h-10" variant="outline">
-                          <Phone className="h-4 w-4 mr-2" />
-                          電話予約
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-4 sm:p-6 border-t">
-                <Button
-                  variant="outline"
-                  className="w-full h-10"
-                  onClick={resetSearch}
-                >
-                  新しく検索
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                <div className="flex justify-center mt-6">
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto min-w-[200px]"
+                    onClick={resetSearch}
+                  >
+                    新しく検索
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* フッター */}
+        {/* Footer */}
         <footer className="mt-16 pt-8 border-t">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-4">
