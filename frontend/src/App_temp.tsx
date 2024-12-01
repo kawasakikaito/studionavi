@@ -13,11 +13,13 @@ import {
   ChevronRight,
   Globe,
   Phone,
+  ArrowRight,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -51,7 +53,6 @@ interface Studio {
   hours: string;
   bookingStart: string;
 }
-
 const PRESET_STUDIOS: Studio[] = [
   {
     id: 1,
@@ -107,6 +108,7 @@ const timeOptions = [
 ];
 
 const durationOptions = ["1時間", "2時間", "3時間", "4時間", "5時間"];
+
 const MusicStudioBookingApp = () => {
   const [selectedStudios, setSelectedStudios] = useState([
     PRESET_STUDIOS[0],
@@ -114,13 +116,44 @@ const MusicStudioBookingApp = () => {
     PRESET_STUDIOS[4],
   ]);
   const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedTime, setSelectedTime] = useState("");
+  const [searchStartTime, setSearchStartTime] = useState("");
+  const [searchEndTime, setSearchEndTime] = useState("");
   const [selectedDuration, setSelectedDuration] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchResultsOpen, setIsSearchResultsOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  const validateSearchConditions = () => {
+    if (
+      !selectedDate ||
+      !searchStartTime ||
+      !searchEndTime ||
+      !selectedDuration ||
+      selectedStudios.length === 0
+    ) {
+      alert("全ての項目を入力してください");
+      return false;
+    }
+
+    const startIndex = timeOptions.indexOf(searchStartTime);
+    const endIndex = timeOptions.indexOf(searchEndTime);
+    const durationHours = parseInt(selectedDuration.replace("時間", ""));
+
+    if (startIndex >= endIndex) {
+      alert("終了時刻は開始時刻より後の時間を選択してください");
+      return false;
+    }
+
+    if (endIndex - startIndex < durationHours) {
+      alert(
+        `検索時間範囲（${searchStartTime}～${searchEndTime}）が予約時間（${selectedDuration}）より短くなっています`
+      );
+      return false;
+    }
+
+    return true;
+  };
 
   const searchResults = useMemo(() => {
     if (!searchQuery) return [];
@@ -161,18 +194,20 @@ const MusicStudioBookingApp = () => {
   };
 
   const handleSearch = () => {
-    setSearchPerformed(true);
+    if (validateSearchConditions()) {
+      setSearchPerformed(true);
+    }
   };
 
   const resetSearch = () => {
     setSelectedStudios([]);
     setSelectedDate(undefined);
-    setSelectedTime("");
+    setSearchStartTime("");
+    setSearchEndTime("");
     setSelectedDuration("");
     setSearchPerformed(false);
     setSearchQuery("");
   };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -202,7 +237,7 @@ const MusicStudioBookingApp = () => {
               </Button>
             </div>
 
-            {/* Mobile Menu - Sheetコンポーネントを更新 */}
+            {/* Mobile Menu */}
             <div className="flex items-center md:hidden">
               <Sheet>
                 <SheetTrigger asChild>
@@ -361,21 +396,21 @@ const MusicStudioBookingApp = () => {
               </div>
             </CardContent>
           </Card>
-
-          {/* Date and Time Selection */}
+          {/* 日時選択カード */}
           <Card>
             <CardHeader>
               <div className="space-y-1.5">
                 <CardTitle className="text-2xl">日時を選択</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  2ヶ月先までの予約が可能です
+                  希望する日付と時間帯を選択してください
                 </p>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-10 gap-4">
-                {/* Date Picker */}
-                <div className="col-span-4">
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                {/* 日付選択 - 5列 */}
+                <div className="sm:col-span-5">
+                  <Label className="text-sm mb-2">日付</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -385,7 +420,7 @@ const MusicStudioBookingApp = () => {
                           !selectedDate && "text-muted-foreground"
                         )}
                       >
-                        <CalendarIcon className="h-4 w-4" />
+                        <CalendarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                         {selectedDate
                           ? format(selectedDate, "yyyy年MM月dd日 (eee)", {
                               locale: ja,
@@ -411,70 +446,91 @@ const MusicStudioBookingApp = () => {
                   </Popover>
                 </div>
 
-                {/* Time Selection */}
-                <div className="col-span-3">
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger
-                      className={cn(
-                        "w-full text-left justify-start",
-                        !selectedTime && "text-muted-foreground"
-                      )}
-                    >
-                      <Clock className="mr-2 h-4 w-4" />
-                      <SelectValue placeholder="開始時間を選択" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeOptions.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* 時間帯と予約時間 - 7列 */}
+                {/* 時間帯と予約時間 - 7列 */}
+                {/* 時間帯と予約時間 - 7列 */}
+                {/* 時間帯と予約時間 - 7列 */}
+                {/* 時間帯と予約時間 - 7列 */}
+                <div className="sm:col-span-7">
+                  <Label className="text-sm mb-2">時間帯・予約時間</Label>
+                  <div className="grid grid-cols-12 gap-2">
+                    {/* 時間帯 - 8列（常に横並び） */}
+                    <div className="col-span-12 sm:col-span-8">
+                      <div className="flex items-center">
+                        <Select
+                          value={searchStartTime}
+                          onValueChange={setSearchStartTime}
+                        >
+                          <SelectTrigger className="w-[130px] sm:w-full">
+                            <SelectValue placeholder="開始時刻" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {timeOptions.map((time) => (
+                              <SelectItem key={time} value={time}>
+                                {time}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
 
-                {/* Duration Selection */}
-                <div className="col-span-3">
-                  <Select
-                    value={selectedDuration}
-                    onValueChange={setSelectedDuration}
-                  >
-                    <SelectTrigger
-                      className={cn(
-                        "w-full text-left justify-start",
-                        !selectedDuration && "text-muted-foreground"
-                      )}
-                    >
-                      <Clock className="mr-2 h-4 w-4" />
-                      <SelectValue placeholder="利用時間を選択" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {durationOptions.map((duration) => (
-                        <SelectItem key={duration} value={duration}>
-                          {duration}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        <span className="mx-2 flex-shrink-0 text-muted-foreground">
+                          〜
+                        </span>
+
+                        <Select
+                          value={searchEndTime}
+                          onValueChange={setSearchEndTime}
+                        >
+                          <SelectTrigger className="w-[130px] sm:w-full">
+                            <SelectValue placeholder="終了時刻" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {timeOptions.map((time) => (
+                              <SelectItem key={time} value={time}>
+                                {time}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* 予約時間 - 4列（モバイルでは下に配置） */}
+                    <div className="col-span-12 sm:col-span-4 mt-2 sm:mt-0">
+                      <Label className="text-xs text-muted-foreground sm:hidden">
+                        予約時間
+                      </Label>
+                      <Select
+                        value={selectedDuration}
+                        onValueChange={setSelectedDuration}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="予約時間" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {durationOptions.map((duration) => (
+                            <SelectItem key={duration} value={duration}>
+                              {duration}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <Button
                 className="w-full"
                 variant="gradient"
-                disabled={
-                  !selectedDate ||
-                  !selectedTime ||
-                  !selectedDuration ||
-                  selectedStudios.length === 0
-                }
                 onClick={handleSearch}
               >
                 空き状況を検索
               </Button>
             </CardContent>
           </Card>
-          {/* Search Results */}
+
+          {/* 検索結果 */}
           {searchPerformed && (
             <Card>
               <CardHeader className="space-y-1">
@@ -486,7 +542,9 @@ const MusicStudioBookingApp = () => {
                     })}
                   </span>
                   <span>•</span>
-                  <span>{selectedTime}</span>
+                  <span>
+                    {searchStartTime} ～ {searchEndTime}
+                  </span>
                   <span>•</span>
                   <span>{selectedDuration}</span>
                 </div>
@@ -556,7 +614,6 @@ const MusicStudioBookingApp = () => {
             </Card>
           )}
         </div>
-
         {/* Footer */}
         <footer className="mt-16 pt-8 border-t">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
