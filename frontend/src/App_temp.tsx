@@ -53,6 +53,7 @@ interface Studio {
   hours: string;
   bookingStart: string;
 }
+
 const PRESET_STUDIOS: Studio[] = [
   {
     id: 1,
@@ -108,7 +109,6 @@ const timeOptions = [
 ];
 
 const durationOptions = ["1時間", "2時間", "3時間", "4時間", "5時間"];
-
 const MusicStudioBookingApp = () => {
   const [selectedStudios, setSelectedStudios] = useState([
     PRESET_STUDIOS[0],
@@ -210,9 +210,9 @@ const MusicStudioBookingApp = () => {
   };
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-background border-b">
-        <div className="container mx-auto">
+      <div className="container mx-auto max-w-5xl px-2 sm:px-6">
+        {/* Header */}
+        <header className="bg-background border-b">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -279,385 +279,472 @@ const MusicStudioBookingApp = () => {
               </Sheet>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main content */}
-      <main className="container mx-auto py-4 px-4 sm:py-6 sm:px-6">
-        <div className="space-y-4 sm:space-y-6">
-          {/* スタジオ選択セクション */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl sm:text-2xl">
-                    スタジオを選択
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    複数のスタジオを同時に検索できます（最大5件）
-                  </p>
-                </div>
-                <Badge variant="secondary">{selectedStudios.length}/5</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* 検索バー */}
-              <div className="relative" ref={searchRef}>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setIsSearchResultsOpen(true);
-                    }}
-                    onFocus={() => setIsSearchResultsOpen(true)}
-                    placeholder="スタジオを検索して追加..."
-                    className="pl-10"
-                    disabled={selectedStudios.length >= 5}
-                  />
-                </div>
+        {/* Main content */}
+        <main className="py-4 px-2 sm:py-6 sm:px-6">
+          <div className="relative overflow-hidden">
+            {/* Decorative elements */}
+            <div className="absolute top-4 left-4 w-32 sm:w-48 h-32 sm:h-48 bg-primary/10 rounded-full blur-3xl opacity-20" />
+            <div className="absolute bottom-4 right-4 w-32 sm:w-48 h-32 sm:h-48 bg-primary/10 rounded-full blur-3xl opacity-20" />
 
-                {/* 検索結果ドロップダウン */}
-                {isSearchResultsOpen && searchResults.length > 0 && (
-                  <Card className="absolute z-50 w-full mt-2">
-                    <CardContent className="p-0">
-                      {searchResults.map((studio) => (
-                        <Button
-                          key={studio.id}
-                          onClick={() => addStudio(studio)}
-                          variant="ghost"
-                          className="w-full justify-start h-auto py-3 px-4 hover:bg-accent"
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium">{studio.name}</div>
-                            <div className="text-sm text-muted-foreground flex items-center mt-1">
-                              <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                              {studio.address}
-                            </div>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground ml-2" />
-                        </Button>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {/* 選択されたスタジオのリスト */}
-              <div className="space-y-2">
-                {selectedStudios.map((studio) => (
-                  <Card key={studio.id} className="overflow-hidden">
-                    <div className="p-4 sm:p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-semibold truncate">
-                            {studio.name}
-                          </h3>
-                          <div className="mt-2 space-y-1">
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <MapPin className="h-3 w-3 mr-2 flex-shrink-0" />
-                              <span className="truncate">{studio.address}</span>
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Clock className="h-3 w-3 mr-2 flex-shrink-0" />
-                              <span className="truncate">{studio.hours}</span>
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Calendar className="h-3 w-3 mr-2 flex-shrink-0" />
-                              <span className="truncate">
-                                予約開始：{studio.bookingStart}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="flex-shrink-0"
-                          onClick={() => removeStudio(studio.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-
-                {selectedStudios.length === 0 && (
-                  <div className="text-center py-8 bg-muted rounded-lg">
-                    <Plus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      スタジオを検索して追加してください
+            <div className="relative pt-6 sm:pt-8 pb-6 sm:pb-8 text-center px-4">
+              {" "}
+              {/* パディングを調整 */}
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
+                スタジオ予約を、
+                <br className="sm:hidden" />
+                もっと簡単に
+              </h1>
+              <p className="mt-2 sm:mt-3 text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
+                {" "}
+                {/* マージンを調整 */}
+                複数のスタジオの
+                <br className="sm:hidden" />
+                空き状況を一括確認
+              </p>
+              {/* Step indicators - 横並びのまま */}
+              <div className="flex items-center justify-center mt-8 sm:mt-12 max-w-2xl mx-auto px-4">
+                <div className="flex-1 relative">
+                  <div className="h-0.5 bg-gradient-to-r from-transparent via-muted to-muted absolute w-full top-5 sm:top-6" />
+                  <div className="relative flex flex-col items-center">
+                    <Badge
+                      variant="gradient"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-base p-0"
+                    >
+                      1
+                    </Badge>
+                    <p className="mt-2 text-xs sm:text-sm font-medium whitespace-nowrap">
+                      スタジオを選ぶ
                     </p>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          {/* 日時選択カード */}
-          <Card>
-            <CardHeader>
-              <div className="space-y-1.5">
-                <CardTitle className="text-2xl">日時を選択</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  希望する日付と時間帯を選択してください
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                {/* 日付選択 - 5列 */}
-                <div className="sm:col-span-5">
-                  <Label className="text-sm mb-2">日付</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left",
-                          !selectedDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                        {selectedDate
-                          ? format(selectedDate, "yyyy年MM月dd日 (eee)", {
-                              locale: ja,
-                            })
-                          : "日付を選択"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        initialFocus
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0)) ||
-                          date >
-                            new Date(
-                              new Date().setMonth(new Date().getMonth() + 2)
-                            )
-                        }
-                      />
-                    </PopoverContent>
-                  </Popover>
                 </div>
 
-                {/* 時間帯と予約時間 - 7列 */}
-                {/* 時間帯と予約時間 - 7列 */}
-                {/* 時間帯と予約時間 - 7列 */}
-                {/* 時間帯と予約時間 - 7列 */}
-                {/* 時間帯と予約時間 - 7列 */}
-                <div className="sm:col-span-7">
-                  <Label className="text-sm mb-2">時間帯・予約時間</Label>
-                  <div className="grid grid-cols-12 gap-2">
-                    {/* 時間帯 - 8列（常に横並び） */}
-                    <div className="col-span-12 sm:col-span-8">
-                      <div className="flex items-center">
-                        <Select
-                          value={searchStartTime}
-                          onValueChange={setSearchStartTime}
-                        >
-                          <SelectTrigger className="w-[130px] sm:w-full">
-                            <SelectValue placeholder="開始時刻" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {timeOptions.map((time) => (
-                              <SelectItem key={time} value={time}>
-                                {time}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                <div className="flex-1 relative">
+                  <div className="h-0.5 bg-gradient-to-r from-muted via-muted to-muted absolute w-full top-5 sm:top-6" />
+                  <div className="relative flex flex-col items-center">
+                    <Badge
+                      variant="gradient"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-base p-0"
+                    >
+                      2
+                    </Badge>
+                    <p className="mt-2 text-xs sm:text-sm font-medium whitespace-nowrap">
+                      日時を選ぶ
+                    </p>
+                  </div>
+                </div>
 
-                        <span className="mx-2 flex-shrink-0 text-muted-foreground">
-                          〜
-                        </span>
-
-                        <Select
-                          value={searchEndTime}
-                          onValueChange={setSearchEndTime}
-                        >
-                          <SelectTrigger className="w-[130px] sm:w-full">
-                            <SelectValue placeholder="終了時刻" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {timeOptions.map((time) => (
-                              <SelectItem key={time} value={time}>
-                                {time}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* 予約時間 - 4列（モバイルでは下に配置） */}
-                    <div className="col-span-12 sm:col-span-4 mt-2 sm:mt-0">
-                      <Label className="text-xs text-muted-foreground sm:hidden">
-                        予約時間
-                      </Label>
-                      <Select
-                        value={selectedDuration}
-                        onValueChange={setSelectedDuration}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="予約時間" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {durationOptions.map((duration) => (
-                            <SelectItem key={duration} value={duration}>
-                              {duration}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div className="flex-1 relative">
+                  <div className="h-0.5 bg-gradient-to-r from-muted via-transparent to-transparent absolute w-full top-5 sm:top-6" />
+                  <div className="relative flex flex-col items-center">
+                    <Badge
+                      variant="gradient"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-base p-0"
+                    >
+                      3
+                    </Badge>
+                    <p className="mt-2 text-xs sm:text-sm font-medium whitespace-nowrap">
+                      検索する
+                    </p>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <Button
-                className="w-full"
-                variant="gradient"
-                onClick={handleSearch}
-              >
-                空き状況を検索
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* 検索結果 */}
-          {searchPerformed && (
+          <div className="space-y-4 sm:space-y-6">
+            {/* スタジオ選択セクション */}
             <Card>
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl">検索結果</CardTitle>
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span>
-                    {format(selectedDate!, "yyyy年MM月dd日 (eee)", {
-                      locale: ja,
-                    })}
-                  </span>
-                  <span>•</span>
-                  <span>
-                    {searchStartTime} ～ {searchEndTime}
-                  </span>
-                  <span>•</span>
-                  <span>{selectedDuration}</span>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div className="space-y-1">
+                    <CardTitle className="text-xl sm:text-2xl">
+                      スタジオを選択
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      複数のスタジオを同時に検索できます{" "}
+                      <br className="sm:hidden" />
+                      （最大5件）
+                    </p>
+                  </div>
+                  <Badge variant="secondary">{selectedStudios.length}/5</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <CardContent className="space-y-4 px-3 sm:px-6">
+                {/* 検索バー */}
+                <div className="relative" ref={searchRef}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setIsSearchResultsOpen(true);
+                      }}
+                      onFocus={() => setIsSearchResultsOpen(true)}
+                      placeholder="スタジオを検索して追加..."
+                      className="pl-10"
+                      disabled={selectedStudios.length >= 5}
+                    />
+                  </div>
+
+                  {/* 検索結果ドロップダウン */}
+                  {isSearchResultsOpen && searchResults.length > 0 && (
+                    <Card className="absolute z-50 w-full mt-2">
+                      <CardContent className="p-0">
+                        {searchResults.map((studio) => (
+                          <Button
+                            key={studio.id}
+                            onClick={() => addStudio(studio)}
+                            variant="ghost"
+                            className="w-full justify-start h-auto py-3 px-4 hover:bg-accent"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium">{studio.name}</div>
+                              <div className="text-sm text-muted-foreground flex items-center mt-1">
+                                <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                                {studio.address}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground ml-2" />
+                          </Button>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* 選択されたスタジオのリスト */}
+                <div className="space-y-2">
                   {selectedStudios.map((studio) => (
-                    <Card key={studio.id} className="flex flex-col">
-                      <CardContent className="flex-1 p-4">
-                        <div className="space-y-4">
-                          <div>
-                            <h3 className="text-lg font-semibold line-clamp-1">
+                    <Card key={studio.id} className="overflow-hidden">
+                      <div className="p-4 sm:p-6">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-semibold truncate">
                               {studio.name}
                             </h3>
-                            <div className="mt-3 space-y-2">
-                              <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                <span className="line-clamp-2">
+                            <div className="mt-2 space-y-1">
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <MapPin className="h-3 w-3 mr-2 flex-shrink-0" />
+                                <span className="truncate">
                                   {studio.address}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Clock className="h-4 w-4 flex-shrink-0" />
-                                <span>{studio.hours}</span>
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Clock className="h-3 w-3 mr-2 flex-shrink-0" />
+                                <span className="truncate">{studio.hours}</span>
                               </div>
-                              <div className="pt-2">
-                                <Badge
-                                  variant="secondary"
-                                  className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                >
-                                  予約可能
-                                </Badge>
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Calendar className="h-3 w-3 mr-2 flex-shrink-0" />
+                                <span className="truncate">
+                                  予約開始：{studio.bookingStart}
+                                </span>
                               </div>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Button
-                              className="w-full flex items-center justify-center gap-2"
-                              variant="gradient"
-                            >
-                              <Globe className="h-4 w-4" />
-                              <span className="hidden sm:inline">Web</span>予約
-                            </Button>
-                            <Button
-                              variant="outline"
-                              className="w-full flex items-center justify-center gap-2"
-                            >
-                              <Phone className="h-4 w-4" />
-                              <span className="hidden sm:inline">電話</span>予約
-                            </Button>
-                          </div>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="flex-shrink-0"
+                            onClick={() => removeStudio(studio.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                      </CardContent>
+                      </div>
                     </Card>
                   ))}
-                </div>
-                <div className="flex justify-center mt-6">
-                  <Button
-                    variant="outline"
-                    className="w-full sm:w-auto min-w-[200px]"
-                    onClick={resetSearch}
-                  >
-                    新しく検索
-                  </Button>
+
+                  {selectedStudios.length === 0 && (
+                    <div className="text-center py-8 bg-muted rounded-lg">
+                      <Plus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        スタジオを検索して追加してください
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
-          )}
-        </div>
-        {/* Footer */}
-        <footer className="mt-16 pt-8 border-t">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">スタジオナビ</h3>
-              <p className="text-sm text-muted-foreground">
-                音楽スタジオの検索・予約を、もっと快適に。
+            {/* 日時選択カード以降のコンポーネント */}
+            <Card>
+              <CardHeader>
+                <div className="space-y-1.5">
+                  <CardTitle className="text-2xl">日時を選択</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    希望する日付と時間帯を選択してください
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 px-3 sm:px-6">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                  {/* 日付選択 - 5列 */}
+                  <div className="sm:col-span-5">
+                    <Label className="text-sm mb-2">日付</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left",
+                            !selectedDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                          {selectedDate
+                            ? format(selectedDate, "yyyy年MM月dd日 (eee)", {
+                                locale: ja,
+                              })
+                            : "日付を選択"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={setSelectedDate}
+                          initialFocus
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0)) ||
+                            date >
+                              new Date(
+                                new Date().setMonth(new Date().getMonth() + 2)
+                              )
+                          }
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* 時間帯と予約時間 - 7列 */}
+                  <div className="sm:col-span-7">
+                    <Label className="text-sm mb-2">時間帯・予約時間</Label>
+                    <div className="grid grid-cols-12 gap-2">
+                      {/* 時間帯 - 8列（常に横並び） */}
+                      <div className="col-span-12 sm:col-span-8">
+                        <div className="flex items-center">
+                          <Select
+                            value={searchStartTime}
+                            onValueChange={setSearchStartTime}
+                          >
+                            <SelectTrigger
+                              className={cn(
+                                "w-[130px] sm:w-full",
+                                !searchStartTime && "text-muted-foreground"
+                              )}
+                            >
+                              <SelectValue placeholder="開始時刻" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {timeOptions.map((time) => (
+                                <SelectItem key={time} value={time}>
+                                  {time}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          <span className="mx-2 flex-shrink-0 text-muted-foreground">
+                            〜
+                          </span>
+
+                          <Select
+                            value={searchEndTime}
+                            onValueChange={setSearchEndTime}
+                          >
+                            <SelectTrigger
+                              className={cn(
+                                "w-[130px] sm:w-full",
+                                !searchEndTime && "text-muted-foreground"
+                              )}
+                            >
+                              <SelectValue placeholder="終了時刻" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {timeOptions.map((time) => (
+                                <SelectItem key={time} value={time}>
+                                  {time}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* 予約時間 - 4列（モバイルでは下に配置） */}
+                      <div className="col-span-12 sm:col-span-4 mt-2 sm:mt-0">
+                        <Label className="text-xs text-muted-foreground sm:hidden">
+                          予約時間
+                        </Label>
+                        <Select
+                          value={selectedDuration}
+                          onValueChange={setSelectedDuration}
+                        >
+                          <SelectTrigger
+                            className={cn(
+                              "w-full",
+                              !selectedDuration && "text-muted-foreground"
+                            )}
+                          >
+                            <SelectValue placeholder="予約時間" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {durationOptions.map((duration) => (
+                              <SelectItem key={duration} value={duration}>
+                                {duration}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full"
+                  variant="gradient"
+                  onClick={handleSearch}
+                >
+                  空き状況を検索
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* 検索結果 */}
+            {searchPerformed && (
+              <Card>
+                <CardHeader className="space-y-1">
+                  <CardTitle className="text-2xl">検索結果</CardTitle>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <span>
+                      {format(selectedDate!, "yyyy年MM月dd日 (eee)", {
+                        locale: ja,
+                      })}
+                    </span>
+                    <span>•</span>
+                    <span>
+                      {searchStartTime} ～ {searchEndTime}
+                    </span>
+                    <span>•</span>
+                    <span>{selectedDuration}</span>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {selectedStudios.map((studio) => (
+                      <Card key={studio.id} className="flex flex-col">
+                        <CardContent className="flex-1 p-4">
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="text-lg font-semibold line-clamp-1">
+                                {studio.name}
+                              </h3>
+                              <div className="mt-3 space-y-2">
+                                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                                  <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                  <span className="line-clamp-2">
+                                    {studio.address}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Clock className="h-4 w-4 flex-shrink-0" />
+                                  <span>{studio.hours}</span>
+                                </div>
+                                <div className="pt-2">
+                                  <Badge
+                                    variant="secondary"
+                                    className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                                  >
+                                    予約可能
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Button
+                                className="w-full flex items-center justify-center gap-2"
+                                variant="gradient"
+                              >
+                                <Globe className="h-4 w-4" />
+                                <span className="hidden sm:inline">Web</span>
+                                予約
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="w-full flex items-center justify-center gap-2"
+                              >
+                                <Phone className="h-4 w-4" />
+                                <span className="hidden sm:inline">電話</span>
+                                予約
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  <div className="flex justify-center mt-6">
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto min-w-[200px]"
+                      onClick={resetSearch}
+                    >
+                      新しく検索
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+          {/* Footer */}
+          <footer className="mt-16 pt-8 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">スタジオナビ</h3>
+                <p className="text-sm text-muted-foreground">
+                  音楽スタジオの検索・予約を、もっと快適に。
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium mb-4">サービス</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>スタジオ検索</li>
+                  <li>料金案内</li>
+                  <li>設備情報</li>
+                  <li>ご利用ガイド</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium mb-4">サポート</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>よくある質問</li>
+                  <li>お問い合わせ</li>
+                  <li>利用規約</li>
+                  <li>プライバシーポリシー</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium mb-4">運営会社</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>会社概要</li>
+                  <li>採用情報</li>
+                  <li>ニュース</li>
+                  <li>ブログ</li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-8 pt-8 border-t">
+              <p className="text-center text-sm text-muted-foreground">
+                © 2024 スタジオナビ. All rights reserved.
               </p>
             </div>
-            <div>
-              <h4 className="font-medium mb-4">サービス</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>スタジオ検索</li>
-                <li>料金案内</li>
-                <li>設備情報</li>
-                <li>ご利用ガイド</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium mb-4">サポート</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>よくある質問</li>
-                <li>お問い合わせ</li>
-                <li>利用規約</li>
-                <li>プライバシーポリシー</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium mb-4">運営会社</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>会社概要</li>
-                <li>採用情報</li>
-                <li>ニュース</li>
-                <li>ブログ</li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-8 pt-8 border-t">
-            <p className="text-center text-sm text-muted-foreground">
-              © 2024 スタジオナビ. All rights reserved.
-            </p>
-          </div>
-        </footer>
-      </main>
+          </footer>
+        </main>
+      </div>
     </div>
   );
 };
