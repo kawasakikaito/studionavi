@@ -13,7 +13,6 @@ import {
   ChevronRight,
   Globe,
   Phone,
-  ArrowRight,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,12 @@ import {
   SheetClose,
   SheetDescription,
 } from "@/components/ui/sheet";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -106,6 +111,36 @@ const timeOptions = [
   "20:00",
   "21:00",
   "22:00",
+];
+
+const FOOTER_SECTIONS = [
+  {
+    title: "サービス",
+    links: [
+      { label: "スタジオ検索", href: "/search" },
+      { label: "料金案内", href: "/pricing" },
+      { label: "設備情報", href: "/facilities" },
+      { label: "ご利用ガイド", href: "/guide" },
+    ],
+  },
+  {
+    title: "サポート",
+    links: [
+      { label: "よくある質問", href: "/faq" },
+      { label: "お問い合わせ", href: "/contact" },
+      { label: "利用規約", href: "/terms" },
+      { label: "プライバシーポリシー", href: "/privacy" },
+    ],
+  },
+  {
+    title: "運営会社",
+    links: [
+      { label: "会社概要", href: "/company" },
+      { label: "採用情報", href: "/careers" },
+      { label: "ニュース", href: "/news" },
+      { label: "ブログ", href: "/blog" },
+    ],
+  },
 ];
 
 const durationOptions = ["1時間", "2時間", "3時間", "4時間", "5時間"];
@@ -701,46 +736,91 @@ const MusicStudioBookingApp = () => {
             )}
           </div>
           {/* Footer */}
-          <footer className="mt-16 pt-8 border-t">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">スタジオナビ</h3>
-                <p className="text-sm text-muted-foreground">
-                  音楽スタジオの検索・予約を、もっと快適に。
+          <footer
+            className="mt-16 w-full border-t"
+            role="contentinfo"
+            aria-label="サイトフッター"
+          >
+            <div className="container mx-auto max-w-5xl px-4">
+              <div className="pt-8">
+                {/* モバイルレイアウト */}
+                <div className="md:hidden space-y-6">
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-semibold">スタジオナビ</h2>
+                    <p className="text-sm text-muted-foreground">
+                      音楽スタジオの検索・予約を、もっと快適に。
+                    </p>
+                  </div>
+
+                  <Accordion
+                    type="single"
+                    collapsible
+                    className="w-full"
+                    defaultValue={FOOTER_SECTIONS[0].title}
+                  >
+                    {FOOTER_SECTIONS.map((section) => (
+                      <AccordionItem key={section.title} value={section.title}>
+                        <AccordionTrigger className="text-base font-medium">
+                          {section.title}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <nav aria-label={`${section.title}ナビゲーション`}>
+                            <ul className="space-y-3 py-2">
+                              {section.links.map((link) => (
+                                <li key={link.label}>
+                                  <a
+                                    href={link.href}
+                                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                  >
+                                    {link.label}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </nav>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+
+                {/* デスクトップレイアウト */}
+                <div className="hidden md:grid md:grid-cols-4 gap-8">
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-semibold">スタジオナビ</h2>
+                    <p className="text-sm text-muted-foreground">
+                      音楽スタジオの検索・予約を、もっと快適に。
+                    </p>
+                  </div>
+                  {FOOTER_SECTIONS.map((section) => (
+                    <div key={section.title}>
+                      <h2 className="font-medium mb-4">{section.title}</h2>
+                      <nav aria-label={`${section.title}ナビゲーション`}>
+                        <ul className="space-y-2">
+                          {section.links.map((link) => (
+                            <li key={link.label}>
+                              <a
+                                href={link.href}
+                                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                {link.label}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </nav>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* コピーライト */}
+              <div className="mt-8 pt-8 border-t">
+                <p className="text-center text-sm text-muted-foreground">
+                  © {new Date().getFullYear()} スタジオナビ. All rights
+                  reserved.
                 </p>
               </div>
-              <div>
-                <h4 className="font-medium mb-4">サービス</h4>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>スタジオ検索</li>
-                  <li>料金案内</li>
-                  <li>設備情報</li>
-                  <li>ご利用ガイド</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-4">サポート</h4>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>よくある質問</li>
-                  <li>お問い合わせ</li>
-                  <li>利用規約</li>
-                  <li>プライバシーポリシー</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-4">運営会社</h4>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>会社概要</li>
-                  <li>採用情報</li>
-                  <li>ニュース</li>
-                  <li>ブログ</li>
-                </ul>
-              </div>
-            </div>
-            <div className="mt-8 pt-8 border-t">
-              <p className="text-center text-sm text-muted-foreground">
-                © 2024 スタジオナビ. All rights reserved.
-              </p>
             </div>
           </footer>
         </main>
