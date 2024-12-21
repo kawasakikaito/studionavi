@@ -6,20 +6,43 @@ class Todo(models.Model):
     attachment = models.FileField(upload_to='uploads/', blank=True, null=True)  # Optional file attachment
 
     def __str__(self):
-        return self.title
+        return self.titleS
 
 class Studio(models.Model):
-    name = models.CharField(max_length=100)  # スタジオ名
-    address = models.TextField()  # 住所
-    opening_time = models.TimeField()  # 開店時間
-    closing_time = models.TimeField()  # 閉店時間
-    reservation_url = models.URLField()  # 予約ページのURL
-    self_practice_reservation_start_time = models.IntegerField( # 個人練習の予約開始時間
-        null=True,  # データベースでNULLを許可
-        blank=True  # フォームや管理画面で空欄を許可
+    name = models.CharField(max_length=100)
+    address = models.TextField()
+    
+    # 営業時間をTimeFieldで管理
+    opening_time = models.TimeField(
+        help_text="開店時間"
     )
-    created_at = models.DateTimeField(auto_now_add=True)  # 作成日時
-    updated_at = models.DateTimeField(auto_now=True)  # 更新日時
+    closing_time = models.TimeField(
+        help_text="閉店時間"
+    )
+    # 閉店時間が翌日かどうかのフラグ
+    closes_next_day = models.BooleanField(
+        default=False,
+        help_text="閉店時間が翌日の場合はTrue"
+    )
+    
+    reservation_url = models.URLField()
+    
+    # 個人練習の予約開始タイミングを改善
+    self_practice_reservation_start_date = models.DurationField(
+        null=True,
+        blank=True,
+        help_text="個人練習の予約開始可能までの日にち"
+    )
+    
+        # 個人練習の予約開始タイミングを改善
+    self_practice_reservation_start_time = models.DurationField(
+        null=True,
+        blank=True,
+        help_text="個人練習の予約開始可能時間"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
