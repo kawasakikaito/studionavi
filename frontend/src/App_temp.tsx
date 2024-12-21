@@ -32,7 +32,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetClose,
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
@@ -50,13 +49,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ja } from "date-fns/locale";
+import { StudioSearchComponent } from "@/components/StudioSearchComponent";
 
 interface Studio {
   id: number;
   name: string;
   address: string;
   hours: string;
-  bookingStart: string;
+  self_booking_start: string;
 }
 
 const PRESET_STUDIOS: Studio[] = [
@@ -65,35 +65,35 @@ const PRESET_STUDIOS: Studio[] = [
     name: "Sound Lab Studios",
     address: "東京都渋谷区神南1-2-3",
     hours: "10:00 - 26:00",
-    bookingStart: "前日 12:00〜",
+    self_booking_start: "前日 12:00〜",
   },
   {
     id: 2,
     name: "Melody Box Studio",
     address: "東京都新宿区高田馬場4-5-6",
     hours: "9:00 - 27:00",
-    bookingStart: "3日前 10:00〜",
+    self_booking_start: "3日前 10:00〜",
   },
   {
     id: 3,
     name: "Rock Heaven",
     address: "東京都北区王子7-8-9",
     hours: "10:00 - 25:00",
-    bookingStart: "当日 0:00〜",
+    self_booking_start: "当日 0:00〜",
   },
   {
     id: 4,
     name: "Studio Mission",
     address: "東京都世田谷区下北沢1-10-12",
     hours: "11:00 - 26:00",
-    bookingStart: "2日前 15:00〜",
+    self_booking_start: "2日前 15:00〜",
   },
   {
     id: 5,
     name: "Jam Station",
     address: "東京都港区六本木13-14-15",
     hours: "8:00 - 27:00",
-    bookingStart: "前日 18:00〜",
+    self_booking_start: "前日 18:00〜",
   },
 ];
 
@@ -155,9 +155,6 @@ const MusicStudioBookingApp = () => {
   const [searchEndTime, setSearchEndTime] = useState("");
   const [selectedDuration, setSelectedDuration] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchResultsOpen, setIsSearchResultsOpen] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
 
   const validateSearchConditions = () => {
     if (
@@ -190,37 +187,9 @@ const MusicStudioBookingApp = () => {
     return true;
   };
 
-  const searchResults = useMemo(() => {
-    if (!searchQuery) return [];
-    const selectedIds = selectedStudios.map((s) => s.id);
-    return PRESET_STUDIOS.filter((studio) => {
-      const searchLower = searchQuery.toLowerCase();
-      return (
-        !selectedIds.includes(studio.id) &&
-        (studio.name.toLowerCase().includes(searchLower) ||
-          studio.address.toLowerCase().includes(searchLower))
-      );
-    });
-  }, [searchQuery, selectedStudios]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(event.target as Node)
-      ) {
-        setIsSearchResultsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const addStudio = (studio: Studio) => {
     if (selectedStudios.length < 5) {
       setSelectedStudios((prev) => [...prev, studio]);
-      setSearchQuery("");
-      setIsSearchResultsOpen(false);
     }
   };
 
@@ -241,8 +210,8 @@ const MusicStudioBookingApp = () => {
     setSearchEndTime("");
     setSelectedDuration("");
     setSearchPerformed(false);
-    setSearchQuery("");
   };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto max-w-5xl px-2 sm:px-6">
@@ -408,55 +377,17 @@ const MusicStudioBookingApp = () => {
               </CardHeader>
               <CardContent className="space-y-4 px-3 sm:px-6">
                 {/* 検索バー */}
-                <div className="relative" ref={searchRef}>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setIsSearchResultsOpen(true);
-                      }}
-                      onFocus={() => setIsSearchResultsOpen(true)}
-                      placeholder="スタジオを検索して追加..."
-                      className="pl-10"
-                      disabled={selectedStudios.length >= 5}
-                    />
-                  </div>
-
-                  {/* 検索結果ドロップダウン */}
-                  {isSearchResultsOpen && searchResults.length > 0 && (
-                    <Card className="absolute z-50 w-full mt-2">
-                      <CardContent className="p-0">
-                        {searchResults.map((studio) => (
-                          <Button
-                            key={studio.id}
-                            onClick={() => addStudio(studio)}
-                            variant="ghost"
-                            className="w-full justify-start h-auto py-3 px-4 hover:bg-accent"
-                          >
-                            <div className="flex-1">
-                              <div className="font-medium">{studio.name}</div>
-                              <div className="text-sm text-muted-foreground flex items-center mt-1">
-                                <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                                {studio.address}
-                              </div>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground ml-2" />
-                          </Button>
-                        ))}
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                <StudioSearchComponent
+                  onStudioSelect={addStudio}
+                  disabled={selectedStudios.length >= 5}
+                />
 
                 {/* 選択されたスタジオのリスト */}
                 <div className="space-y-2">
                   {selectedStudios.map((studio) => (
                     <Card key={studio.id} className="overflow-hidden">
                       <div className="p-4 sm:p-6">
-                        <div className="flex items-start gap-4">
+                        <div className="flex items-stSart gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="text-base font-semibold truncate">
                               {studio.name}
@@ -475,7 +406,7 @@ const MusicStudioBookingApp = () => {
                               <div className="flex items-center text-sm text-muted-foreground">
                                 <Calendar className="h-3 w-3 mr-2 flex-shrink-0" />
                                 <span className="truncate">
-                                  予約開始：{studio.bookingStart}
+                                  予約開始：{studio.self_booking_start}
                                 </span>
                               </div>
                             </div>
