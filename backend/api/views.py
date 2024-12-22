@@ -10,9 +10,7 @@ class TodoViewSet(viewsets.ModelViewSet):
     serializer_class = TodoSerializer
 
 from django.db.models import Q, Value, FloatField
-from django.db.models.functions import Greatest, Cast
-from django.db.models.functions import Length
-
+from django.db.models.functions import Greatest
 class StudioViewSet(viewsets.ModelViewSet):
     queryset = Studio.objects.all()
     serializer_class = StudioSerializer

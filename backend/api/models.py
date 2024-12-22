@@ -27,20 +27,18 @@ class Studio(models.Model):
     
     reservation_url = models.URLField()
     
-    # 個人練習の予約開始タイミングを改善
-    self_practice_reservation_start_date = models.DurationField(
+    self_practice_reservation_start_date = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="個人練習の予約開始可能までの日にち"
+        help_text="個人練習の予約開始可能までの日数（例：7日前）"
     )
-    
-        # 個人練習の予約開始タイミングを改善
-    self_practice_reservation_start_time = models.DurationField(
+    self_practice_reservation_start_time = models.TimeField(
         null=True,
         blank=True,
-        help_text="個人練習の予約開始可能時間"
+        help_text="個人練習の予約開始時間"
     )
-    
+
+    # 作成日時と更新日時
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

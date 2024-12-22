@@ -22,9 +22,15 @@ class StudioSerializer(serializers.ModelSerializer):
         return f"{opening} - {next_day}{closing}"
 
     def get_self_booking_start(self, obj):
-        # 予約開始時期の文字列を生成
         if obj.self_practice_reservation_start_date and obj.self_practice_reservation_start_time:
-            date_part = f"{obj.self_practice_reservation_start_date.days}日"
-            time_part = f"{obj.self_practice_reservation_start_time.seconds // 3600}時間"
-            return f"{date_part}{time_part}前から予約可能"
-        return "予約開始時期未設定"
+            # 日付部分の処理
+            if obj.self_practice_reservation_start_date == 1:
+                date_part = "前日"
+            else:
+                date_part = f"{obj.self_practice_reservation_start_date}日前"
+            
+            # 時間部分の処理
+            time = obj.self_practice_reservation_start_time
+            time_part = time.strftime("%H:%M")
+        
+        return f"{date_part} {time_part}〜"
