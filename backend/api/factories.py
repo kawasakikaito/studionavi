@@ -18,9 +18,9 @@ class StudioFactory(factory.django.DjangoModelFactory):
     reservation_url = factory.Sequence(lambda n: f'https://example.com/studio/{n+1}')
     
     # 予約開始タイミング: デフォルトで7日前から予約可能
-    self_practice_reservation_start_date = factory.LazyFunction(lambda: timedelta(days=7))
-    # 予約開始時間: デフォルトで24時間前から予約可能
-    self_practice_reservation_start_time = factory.LazyFunction(lambda: timedelta(hours=24))
+    self_practice_reservation_start_date = factory.LazyFunction(lambda: 1)
+    # 予約開始時間: デフォルトで0時0分
+    self_practice_reservation_start_time = factory.LazyFunction(lambda: time(7, 0))
     
     created_at = factory.LazyFunction(timezone.now)
     updated_at = factory.LazyFunction(timezone.now)
