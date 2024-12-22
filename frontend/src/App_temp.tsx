@@ -61,35 +61,35 @@ interface Studio {
 
 const PRESET_STUDIOS: Studio[] = [
   {
-    id: 1,
+    id: 95,
     name: "Sound Lab Studios",
     address: "東京都渋谷区神南1-2-3",
     hours: "10:00 - 26:00",
     self_booking_start: "前日 12:00〜",
   },
   {
-    id: 2,
+    id: 96,
     name: "Melody Box Studio",
     address: "東京都新宿区高田馬場4-5-6",
     hours: "9:00 - 27:00",
     self_booking_start: "3日前 10:00〜",
   },
   {
-    id: 3,
+    id: 97,
     name: "Rock Heaven",
     address: "東京都北区王子7-8-9",
     hours: "10:00 - 25:00",
     self_booking_start: "当日 0:00〜",
   },
   {
-    id: 4,
+    id: 98,
     name: "Studio Mission",
     address: "東京都世田谷区下北沢1-10-12",
     hours: "11:00 - 26:00",
     self_booking_start: "2日前 15:00〜",
   },
   {
-    id: 5,
+    id: 99,
     name: "Jam Station",
     address: "東京都港区六本木13-14-15",
     hours: "8:00 - 27:00",
@@ -210,6 +210,18 @@ const MusicStudioBookingApp = () => {
     setSearchEndTime("");
     setSelectedDuration("");
     setSearchPerformed(false);
+  };
+
+  // スタジオが選択された時の処理
+  const handleStudioSelect = (studio: Studio) => {
+    // 既に選択されているスタジオかチェック
+    const isAlreadySelected = selectedStudios.some(
+      (selected) => selected.id === studio.id
+    );
+
+    if (!isAlreadySelected) {
+      setSelectedStudios((prev) => [...prev, studio]);
+    }
   };
 
   return (
@@ -378,8 +390,10 @@ const MusicStudioBookingApp = () => {
               <CardContent className="space-y-4 px-3 sm:px-6">
                 {/* 検索バー */}
                 <StudioSearchComponent
-                  onStudioSelect={addStudio}
-                  disabled={selectedStudios.length >= 5}
+                  onStudioSelect={handleStudioSelect}
+                  selectedCount={selectedStudios.length}
+                  maxSelections={5}
+                  selectedStudios={selectedStudios}
                 />
 
                 {/* 選択されたスタジオのリスト */}
