@@ -1,7 +1,8 @@
 from rest_framework import viewsets
-from django.db.models import Q, Case, When
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.db.models import Q, Case, When, Value, FloatField
+from django.db.models.functions import Greatest
 from .models import *
 from .serializers import *
 
@@ -9,8 +10,6 @@ class TodoViewSet(viewsets.ModelViewSet):
     queryset = Todo.objects.all()
     serializer_class = TodoSerializer
 
-from django.db.models import Q, Value, FloatField
-from django.db.models.functions import Greatest
 class StudioViewSet(viewsets.ModelViewSet):
     queryset = Studio.objects.all()
     serializer_class = StudioSerializer
