@@ -42,7 +42,7 @@ export function StudioSearchComponent({
       setError(null);
 
       const response = await fetch(
-        `http://127.0.0.1:8000/api/studio/search/?q=${encodeURIComponent(
+        `http://127.0.0.1:8000/api/studios/search/?q=${encodeURIComponent(
           query
         )}`
       );
