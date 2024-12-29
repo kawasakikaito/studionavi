@@ -4,7 +4,7 @@ from .views import *
 
 router = DefaultRouter()
 router.register('todos', TodoViewSet, basename='todo')
-router.register("studio", StudioViewSet, basename="studio")
+router.register("studios", StudioViewSet, basename="studio")
 
 urlpatterns = [
     path('', include(router.urls)),
