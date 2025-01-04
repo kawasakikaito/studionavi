@@ -1,5 +1,5 @@
 # scraper_base.py
-from typing import Protocol, List, Dict, Optional, Union
+from typing import Protocol, List, Dict, Union
 from datetime import date, time
 import json
 from pydantic import BaseModel, field_validator
@@ -36,8 +36,6 @@ class StudioTimeSlot(BaseModel):
             return end
             
         start = info.data['start_time']
-        
-        # 時刻を分単位に変換して比較
         start_minutes = start.hour * 60 + start.minute
         end_minutes = end.hour * 60 + end.minute
         
@@ -76,16 +74,48 @@ class StudioAvailability(BaseModel):
 class StudioScraperStrategy(Protocol):
     """スタジオスクレイパーのインターフェースを定義するプロトコル"""
     
-    def establish_connection(self, shop_id: Optional[str] = None) -> bool:
-        """予約システムへの接続を確立する"""
+    def establish_connection(self, shop_id: str) -> bool:
+        """予約システムへの接続を確立する
+        
+        Args:
+            shop_id: スタジオの店舗ID（必須）
+            
+        Returns:
+            bool: 接続が成功したかどうか
+            
+        Raises:
+            StudioConnectionError: 接続に失敗した場合
+            StudioAuthenticationError: 認証に失敗した場合
+        """
         ...
 
     def fetch_available_times(self, target_date: date) -> List[StudioAvailability]:
-        """指定された日付の予約可能時間を取得する"""
+        """指定された日付の予約可能時間を取得する
+        
+        Args:
+            target_date: 対象日付
+            
+        Returns:
+            List[StudioAvailability]: 予約可能時間のリスト
+            
+        Raises:
+            StudioScraperError: スクレイピングに失敗した場合
+        """
         ...
 
     def to_json(self, availabilities: List[StudioAvailability], pretty: bool = True) -> str:
-        """空き状況をJSON形式の文字列に変換する"""
+        """空き状況をJSON形式の文字列に変換する
+        
+        Args:
+            availabilities: 空き状況のリスト
+            pretty: 整形されたJSONを出力するかどうか
+            
+        Returns:
+            str: JSON形式の文字列
+            
+        Raises:
+            StudioParseError: JSON変換に失敗した場合
+        """
         try:
             return json.dumps(
                 [availability.to_dict() for availability in availabilities],
@@ -93,4 +123,4 @@ class StudioScraperStrategy(Protocol):
                 indent=2 if pretty else None
             )
         except Exception as e:
-            raise StudioParseError("JSONへの変換に失敗しました", e)
+            raise StudioParseError("JSONへの変換に失敗しました") from e
