@@ -1,16 +1,18 @@
-# scraper_studiol.py
 import requests
 import re
 import json
 from typing import List, Optional, Dict
-from datetime import datetime, timedelta
-from .scraper_base import (
+from datetime import datetime, date, time, timedelta
+import logging
+from scraper_base import (
     StudioScraperStrategy,
     StudioScraperError,
     StudioTimeSlot,
     StudioAvailability
 )
-from .scraper_register import ScraperRegistry, ScraperMetadata
+from scraper_registry import ScraperRegistry, ScraperMetadata
+
+logger = logging.getLogger(__name__)
 
 class StudioOLScraper(StudioScraperStrategy):
     """Studio-OLの予約システムに対応するスクレイパー実装"""
@@ -34,9 +36,11 @@ class StudioOLScraper(StudioScraperStrategy):
         try:
             token = self._fetch_token(shop_id)
             self._set_connection_info(shop_id, token)
+            logger.info(f"接続を確立しました: shop_id={shop_id}")
             return True
             
         except requests.RequestException as e:
+            logger.error(f"接続の確立に失敗: {str(e)}")
             raise StudioScraperError(f"接続の確立に失敗しました: {str(e)}")
 
     def _fetch_token(self, shop_id: str) -> str:
@@ -46,6 +50,7 @@ class StudioOLScraper(StudioScraperStrategy):
         response.raise_for_status()
         
         if not response.text.strip():
+            logger.error("接続ページが空です")
             raise StudioScraperError("接続ページが空です")
 
         # Room情報を抽出
@@ -58,13 +63,15 @@ class StudioOLScraper(StudioScraperStrategy):
             self.room_name_map = {pair.group(1): pair.group(2) for pair in pairs}
         
         if not self.room_name_map:
-            print("警告: 部屋情報の抽出に失敗しました")
+            logger.warning("部屋情報の抽出に失敗しました")
             
         # トークンを抽出
         token = self._extract_token(response.text)
         if not token:
+            logger.error("トークンの抽出に失敗しました")
             raise StudioScraperError("トークンの抽出に失敗しました")
             
+        logger.debug(f"トークンを取得しました: {token[:10]}...")
         return token
 
     def _extract_token(self, html_content: str) -> Optional[str]:
@@ -76,43 +83,51 @@ class StudioOLScraper(StudioScraperStrategy):
         """接続情報を設定"""
         self._token = token
         self.shop_id = shop_id
+        logger.debug(f"接続情報を設定: shop_id={shop_id}")
 
-    def fetch_available_times(self, date: str) -> List[StudioAvailability]:
+    def fetch_available_times(self, target_date: date) -> List[StudioAvailability]:
         """指定された日付の予約可能時間を取得"""
         if not self._token:
+            logger.error("トークンが設定されていません")
             raise StudioScraperError("先にestablish_connectionを呼び出してください")
         
-        schedule_data = self._fetch_raw_schedule_data(date)
-        return self._parse_schedule_data(schedule_data, date)
+        logger.info(f"予約可能時間の取得を開始: date={target_date}")
+        schedule_data = self._fetch_raw_schedule_data(target_date)
+        return self._parse_schedule_data(schedule_data, target_date)
 
-    def _fetch_raw_schedule_data(self, date: str) -> List[dict]:
+    def _fetch_raw_schedule_data(self, target_date: date) -> List[dict]:
         """APIから生のスケジュールデータを取得"""
         url = f"{self.BASE_URL}/get_schedule_shop"
         
-        headers, data = self._prepare_schedule_request(date)
+        headers, data = self._prepare_schedule_request(target_date)
         
         try:
             response = self._make_schedule_request(url, headers, data)
             return self._parse_response(response)
             
         except requests.RequestException as e:
+            logger.error(f"スケジュールデータの取得に失敗: {str(e)}")
             raise StudioScraperError(f"スケジュールデータの取得に失敗しました: {str(e)}")
         except json.JSONDecodeError as e:
+            logger.error(f"スケジュールデータのパースに失敗: {str(e)}")
             raise StudioScraperError(f"スケジュールデータのパースに失敗しました: {str(e)}")
 
-    def _prepare_schedule_request(self, date: str) -> tuple:
+    def _prepare_schedule_request(self, target_date: date) -> tuple:
         """スケジュールリクエストのヘッダーとデータを準備"""
         headers = {
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
         }
         
+        # 日付を文字列に変換
+        date_str = target_date.isoformat()
         data = {
             "_token": self._token,
             "shop_id": self.shop_id,
-            "start": f"{date} 00:00:00",
-            "end": f"{date} 24:00:00"
+            "start": f"{date_str} 00:00:00",
+            "end": f"{date_str} 23:30:00"
         }
         
+        logger.debug(f"リクエストデータを準備: date={date_str}")
         return headers, data
 
     def _make_schedule_request(self, url: str, headers: dict, data: dict) -> requests.Response:
@@ -124,14 +139,16 @@ class StudioOLScraper(StudioScraperStrategy):
     def _parse_response(self, response: requests.Response) -> List[dict]:
         """レスポンスをパースしてJSONデータを取得"""
         if not response.text.strip():
+            logger.error("スケジュールデータが空です")
             raise StudioScraperError("スケジュールデータが空です")
         
         return response.json()
 
-    def _parse_schedule_data(self, schedule_data: List[dict], date: str) -> List[StudioAvailability]:
+    def _parse_schedule_data(self, schedule_data: List[dict], target_date: date) -> List[StudioAvailability]:
         """スケジュールデータをパースして利用可能時間を抽出"""
         studio_time_slots = self._group_time_slots_by_studio(schedule_data)
-        return self._create_studio_availabilities(studio_time_slots, date)
+        logger.debug(f"スタジオ数: {len(studio_time_slots)}")
+        return self._create_studio_availabilities(studio_time_slots, target_date)
 
     def _group_time_slots_by_studio(self, schedule_data: List[dict]) -> Dict[str, List[datetime]]:
         """スタジオごとに時間枠をグループ化"""
@@ -150,7 +167,11 @@ class StudioOLScraper(StudioScraperStrategy):
         
         return studio_time_slots
 
-    def _create_studio_availabilities(self, studio_time_slots: Dict[str, List[datetime]], date: str) -> List[StudioAvailability]:
+    def _create_studio_availabilities(
+        self,
+        studio_time_slots: Dict[str, List[datetime]],
+        target_date: date
+    ) -> List[StudioAvailability]:
         """スタジオごとの利用可能時間を作成"""
         studio_availabilities = []
         
@@ -160,9 +181,10 @@ class StudioOLScraper(StudioScraperStrategy):
                 StudioAvailability(
                     room_name=studio_name,
                     time_slots=merged_slots,
-                    date=date
+                    date=target_date
                 )
             )
+            logger.debug(f"スタジオ {studio_name} の利用可能枠: {len(merged_slots)}個")
         
         return studio_availabilities
 
@@ -186,9 +208,12 @@ class StudioOLScraper(StudioScraperStrategy):
 
     def _create_time_slot(self, start: datetime, end: datetime) -> StudioTimeSlot:
         """時間枠オブジェクトを作成"""
+        start_time = time(hour=start.hour, minute=start.minute)
+        end_time = (end + timedelta(minutes=30)).time()
+        
         return StudioTimeSlot(
-            start_time=start.strftime('%H:%M'),
-            end_time=(end + timedelta(minutes=30)).strftime('%H:%M')
+            start_time=start_time,
+            end_time=end_time
         )
 
 def register(registry: ScraperRegistry) -> None:
@@ -203,3 +228,37 @@ def register(registry: ScraperRegistry) -> None:
             base_url="https://studi-ol.com"
         )
     )
+
+def main():
+    try:
+        print("=== スクレイパーの初期化 ===")
+        scraper = StudioOLScraper()
+        
+        print("\n=== 接続の確立 ===")
+        shop_id = "673"  # テスト用のショップID
+        scraper.establish_connection(shop_id=shop_id)
+        print(f"Shop ID: {shop_id} への接続が確立されました")
+        
+        print("\n=== 予約可能時間の取得 ===")
+        target_date = date(2025, 1, 4)
+        print(f"対象日: {target_date}")
+        
+        availabilities = scraper.fetch_available_times(target_date)
+        
+        print("\n=== 取得結果 ===")
+        for availability in availabilities:
+            print(f"\nスタジオ: {availability.room_name}")
+            print("予約可能時間枠:")
+            for slot in availability.time_slots:
+                print(f"  {slot.start_time} - {slot.end_time}")
+                
+    except Exception as e:
+        print(f"\n=== エラーが発生しました ===")
+        print(f"エラータイプ: {type(e).__name__}")
+        print(f"エラーメッセージ: {str(e)}")
+        import traceback
+        print("\n=== スタックトレース ===")
+        print(traceback.format_exc())
+
+if __name__ == "__main__":
+    main()

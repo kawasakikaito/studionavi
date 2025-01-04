@@ -1,7 +1,6 @@
 # scraper_base.py
 from typing import Protocol, List, Dict, Optional, Union
-from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, time
 import json
 from pydantic import BaseModel, field_validator
 
@@ -27,64 +26,50 @@ class StudioValidationError(StudioScraperError):
 
 class StudioTimeSlot(BaseModel):
     """スタジオの利用可能時間枠を表すモデル"""
-    start_time: str  # HH:MM形式
-    end_time: str    # HH:MM形式
-
-    @field_validator('start_time', 'end_time')
-    @classmethod
-    def validate_time_format(cls, v: str) -> str:
-        try:
-            datetime.strptime(v, "%H:%M")
-            return v
-        except ValueError:
-            raise StudioValidationError(f"不正な時刻形式です: {v}. 期待される形式: HH:MM")
+    start_time: time
+    end_time: time
 
     @field_validator('end_time')
     @classmethod
-    def validate_time_order(cls, v: str, info) -> str:
+    def validate_time_order(cls, end: time, info) -> time:
         if 'start_time' not in info.data:
-            return v
+            return end
             
-        start = datetime.strptime(info.data['start_time'], "%H:%M")
-        end = datetime.strptime(v, "%H:%M")
+        start = info.data['start_time']
         
+        # 時刻を分単位に変換して比較
         start_minutes = start.hour * 60 + start.minute
         end_minutes = end.hour * 60 + end.minute
         
+        # 終了時刻が00:00の場合は24:00として扱う
         if end_minutes == 0:
             end_minutes = 24 * 60
             
         if start_minutes >= end_minutes:
             raise StudioValidationError(
-                f"開始時刻({info.data['start_time']})は終了時刻({v})より前である必要があります"
+                f"開始時刻({start.strftime('%H:%M')})は"
+                f"終了時刻({end.strftime('%H:%M')})より前である必要があります"
             )
-        return v
+        return end
 
     def to_dict(self) -> Dict[str, str]:
+        """時間枠をJSON互換の辞書形式に変換"""
         return {
-            "start": self.start_time,
-            "end": self.end_time
+            "start": self.start_time.strftime("%H:%M"),
+            "end": self.end_time.strftime("%H:%M")
         }
 
 class StudioAvailability(BaseModel):
     """スタジオの空き状況を表すモデル"""
     room_name: str
-    date: str  # YYYY-MM-DD形式
+    date: date
     time_slots: List[StudioTimeSlot]
 
-    @field_validator('date')
-    @classmethod
-    def validate_date_format(cls, v: str) -> str:
-        try:
-            datetime.strptime(v, "%Y-%m-%d")
-            return v
-        except ValueError:
-            raise StudioValidationError(f"不正な日付形式です: {v}. 期待される形式: YYYY-MM-DD")
-
     def to_dict(self) -> Dict[str, Union[str, List[Dict[str, str]]]]:
+        """空き状況をJSON互換の辞書形式に変換"""
         return {
             "room_name": self.room_name,
-            "date": self.date,
+            "date": self.date.isoformat(),
             "time_slots": [slot.to_dict() for slot in self.time_slots]
         }
 
@@ -95,7 +80,7 @@ class StudioScraperStrategy(Protocol):
         """予約システムへの接続を確立する"""
         ...
 
-    def fetch_available_times(self, date: str) -> List[StudioAvailability]:
+    def fetch_available_times(self, target_date: date) -> List[StudioAvailability]:
         """指定された日付の予約可能時間を取得する"""
         ...
 

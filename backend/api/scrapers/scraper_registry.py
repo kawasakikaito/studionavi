@@ -1,7 +1,7 @@
 # scraper_registry.py
 from typing import Dict, Type, Optional, List, Any
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date
 import logging
 from pathlib import Path
 from importlib.util import spec_from_file_location, module_from_spec
@@ -94,7 +94,7 @@ class ScraperRegistry:
         self._strategies: Dict[str, Type[StudioScraperStrategy]] = {}
         self._instances: Dict[str, StudioScraperStrategy] = {}
         self._metadata: Dict[str, ScraperMetadata] = {}
-
+        
     def register_strategy(
         self,
         studio_id: str,
@@ -222,7 +222,7 @@ class AvailabilityService:
     def get_availability(
         self,
         studio_id: str,
-        date: str,
+        target_date: date,
         shop_id: Optional[str] = None
     ) -> List[StudioAvailability]:
         """指定されたスタジオの空き状況を取得"""
@@ -230,7 +230,7 @@ class AvailabilityService:
         
         try:
             scraper.establish_connection(shop_id)
-            return scraper.fetch_available_times(date)
+            return scraper.fetch_available_times(target_date)
         except Exception as e:
             logger.error(f"空き状況の取得に失敗: {e}")
             raise StudioConnectionError(f"{studio_id}の空き状況取得に失敗しました") from e
@@ -238,11 +238,11 @@ class AvailabilityService:
     def get_availability_json(
         self,
         studio_id: str,
-        date: str,
+        target_date: date,
         shop_id: Optional[str] = None
     ) -> str:
         """指定されたスタジオの空き状況をJSON形式で取得"""
-        availabilities = self.get_availability(studio_id, date, shop_id)
+        availabilities = self.get_availability(studio_id, target_date, shop_id)
         return self._registry.get_strategy(studio_id).to_json(availabilities)
 
     def list_supported_studios(self) -> Dict[str, dict]:
