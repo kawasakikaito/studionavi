@@ -1,5 +1,5 @@
 # scraper_base.py
-from typing import Protocol, List, Dict, Union
+from typing import Protocol, List, Dict, Optional, Union
 from datetime import date, time
 import json
 from pydantic import BaseModel, field_validator
@@ -62,13 +62,15 @@ class StudioAvailability(BaseModel):
     room_name: str
     date: date
     time_slots: List[StudioTimeSlot]
+    starts_at_thirty: bool = False  # デフォルトはFalse（00分スタート）
 
-    def to_dict(self) -> Dict[str, Union[str, List[Dict[str, str]]]]:
+    def to_dict(self) -> Dict[str, Union[str, List[Dict[str, str]], bool]]:
         """空き状況をJSON互換の辞書形式に変換"""
         return {
             "room_name": self.room_name,
             "date": self.date.isoformat(),
-            "time_slots": [slot.to_dict() for slot in self.time_slots]
+            "time_slots": [slot.to_dict() for slot in self.time_slots],
+            "starts_at_thirty": self.starts_at_thirty
         }
 
 class StudioScraperStrategy(Protocol):

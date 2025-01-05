@@ -1,9 +1,7 @@
-# scraper_padstudio.py
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, date, time
 from typing import List, Dict, Optional, Tuple
-import logging
 from scraper_base import (
     StudioScraperStrategy,
     StudioScraperError,
@@ -11,8 +9,6 @@ from scraper_base import (
     StudioAvailability
 )
 from scraper_registry import ScraperRegistry, ScraperMetadata
-
-logger = logging.getLogger(__name__)
 
 class PadStudioScraper(StudioScraperStrategy):
     """padstudioの予約システムに対応するスクレイパー実装"""
@@ -110,12 +106,15 @@ class PadStudioScraper(StudioScraperStrategy):
         html_content: str,
         target_date: date
     ) -> List[StudioAvailability]:
-        """スケジュールページをパースして利用可能時間を抽出"""
+        """スケジュールページをパースして利用可能時間を抽出
+        
+        PAD Studioは常に00分スタートのスタジオのみをサポートしているため、
+        starts_at_thirtyは常にFalseとなります。
+        """
         soup = BeautifulSoup(html_content, 'html.parser')
         schedule_table = self._find_schedule_table(soup)
         
         if not schedule_table:
-            logger.warning("スケジュールテーブルが見つかりません")
             return []
 
         time_slots = self._extract_time_slots(schedule_table)
@@ -142,10 +141,10 @@ class PadStudioScraper(StudioScraperStrategy):
                     try:
                         start_time = self._parse_time(start_str)
                         end_time = self._parse_time(end_str)
-                        if start_time and end_time:  # Noneチェック
+                        if start_time and end_time:
                             time_slots.append((start_time, end_time))
-                    except ValueError as e:
-                        logger.warning(f"時刻のパースに失敗: {str(e)}")
+                    except ValueError:
+                        continue
                     
         return time_slots
 
@@ -170,7 +169,8 @@ class PadStudioScraper(StudioScraperStrategy):
                     StudioAvailability(
                         room_name=studio_name,
                         date=target_date,
-                        time_slots=available_slots
+                        time_slots=available_slots,
+                        starts_at_thirty=False  # PAD Studioは常に00分スタート
                     )
                 )
                 
@@ -246,8 +246,7 @@ class PadStudioScraper(StudioScraperStrategy):
         try:
             dt = datetime.strptime(time_str, '%H:%M')
             return dt.time()
-        except ValueError as e:
-            logger.warning(f"不正な時刻形式です: {time_str}")
+        except ValueError:
             return None
 
 def register(registry: ScraperRegistry) -> None:
