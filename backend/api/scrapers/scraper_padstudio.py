@@ -2,13 +2,13 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, date, time
 from typing import List, Dict, Optional, Tuple
-from api.scrapers.scraper_base import (
+from backend.api.scrapers.scraper_base import (
     StudioScraperStrategy,
     StudioScraperError,
     StudioTimeSlot,
     StudioAvailability
 )
-from api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
+from backend.api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
 
 class PadStudioScraper(StudioScraperStrategy):
     """padstudioの予約システムに対応するスクレイパー実装"""

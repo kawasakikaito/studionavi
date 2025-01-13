@@ -2,7 +2,7 @@
 from typing import List, Optional, Dict
 from datetime import time, datetime, date, timedelta
 from dataclasses import dataclass
-from scraper_base import (
+from backend.api.scrapers.scraper_base import (
     StudioTimeSlot,
     StudioAvailability,
     StudioValidationError
@@ -227,71 +227,3 @@ class AvailabilityChecker:
                     ))
         
         return filtered
-
-# メイン関数
-if __name__ == "__main__":
-    import logging
-    from scraper_studiol import StudioOLScraper
-    from scraper_padstudio import PadStudioScraper
-
-    # ロギングの設定
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    logger = logging.getLogger(__name__)
-
-    # テスト用の時間範囲（例：9:00-22:00）
-    desired_range = TimeRange(time(9, 0), time(22, 0))
-    # 異なる利用時間でテスト
-    test_durations = [1, 2, 3]  # 1時間、2時間、3時間
-    target_date = date(2025, 1, 7)
-
-    def check_and_print_availability(availabilities, studio_name):
-        if not availabilities:
-            logger.warning(f"{studio_name}: 利用可能なスタジオが見つかりませんでした")
-            return
-
-        logger.info(f"{studio_name}: {len(availabilities)}件のスタジオ情報を取得しました")
-
-        # AvailabilityCheckerの初期化
-        checker = AvailabilityChecker(availabilities)
-
-        for duration in test_durations:
-            print(f"\n=== {studio_name}: {duration}時間枠での検索結果 ===")
-            results = checker.find_available_slots(desired_range, duration)
-            
-            if not results:
-                print(f"{duration}時間の利用可能枠は見つかりませんでした")
-                continue
-                
-            for availability in results:
-                print(f"\n部屋名: {availability.room_name}")
-                print("予約可能時間枠:")
-                for slot in availability.time_slots:
-                    print(f"  {slot.start_time.strftime('%H:%M')}-{slot.end_time.strftime('%H:%M')}")
-                if availability.starts_at_thirty:
-                    print("  ※ この部屋は30分スタートの部屋です")
-
-    try:
-        # Studio-OLスクレイパーのテスト
-        logger.info("Studio-OLスクレイパーを初期化中...")
-        ol_scraper = StudioOLScraper()
-        shop_id = "546"
-        logger.info(f"shop_id: {shop_id} への接続を確立中...")
-        ol_scraper.establish_connection(shop_id)
-        logger.info(f"Studio-OL: 空き状況を取得中: {target_date}")
-        ol_availabilities = ol_scraper.fetch_available_times(target_date)
-        check_and_print_availability(ol_availabilities, "Studio-OL")
-
-        # PAD Studioスクレイパーのテスト
-        logger.info("\nPAD Studioスクレイパーを初期化中...")
-        pad_scraper = PadStudioScraper()
-        logger.info("PAD Studio: 接続を確立中...")
-        pad_scraper.establish_connection()
-        logger.info(f"PAD Studio: 空き状況を取得中: {target_date}")
-        pad_availabilities = pad_scraper.fetch_available_times(target_date)
-        check_and_print_availability(pad_availabilities, "PAD Studio")
-
-    except Exception as e:
-        logger.error(f"エラーが発生しました: {str(e)}", exc_info=True)
