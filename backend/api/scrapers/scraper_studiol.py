@@ -5,13 +5,13 @@ from typing import List, Optional, Dict
 from datetime import datetime, date, time, timedelta
 import logging
 from pathlib import Path
-from scraper_base import (
+from api.scrapers.scraper_base import (
     StudioScraperStrategy,
     StudioScraperError,
     StudioTimeSlot,
     StudioAvailability
 )
-from scraper_registry import ScraperRegistry, ScraperMetadata
+from api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
 
 logger = logging.getLogger(__name__)
 
