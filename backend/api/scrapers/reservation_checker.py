@@ -2,7 +2,7 @@
 from typing import List, Optional, Dict
 from datetime import time, datetime, date, timedelta
 from dataclasses import dataclass
-from backend.api.scrapers.scraper_base import (
+from api.scrapers.scraper_base import (
     StudioTimeSlot,
     StudioAvailability,
     StudioValidationError

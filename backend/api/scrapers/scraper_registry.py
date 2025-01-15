@@ -7,7 +7,7 @@ from pathlib import Path
 from importlib.util import spec_from_file_location, module_from_spec
 import sys
 from enum import Enum, auto
-from backend.api.scrapers.scraper_base import (
+from api.scrapers.scraper_base import (
     StudioScraperStrategy,
     StudioScraperError,
     StudioConnectionError,

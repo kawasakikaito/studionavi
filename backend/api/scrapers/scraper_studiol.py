@@ -5,18 +5,18 @@ from typing import List, Optional, Dict
 from datetime import datetime, date, time, timedelta
 import logging
 from pathlib import Path
-from backend.api.scrapers.scraper_base import (
+from api.scrapers.scraper_base import (
     StudioScraperStrategy,
     StudioScraperError,
     StudioTimeSlot,
     StudioAvailability
 )
-from backend.api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
+from api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
 
 logger = logging.getLogger(__name__)
 
-class StudioOLScraper(StudioScraperStrategy):
-    """Studio-OLの予約システムに対応するスクレイパー実装"""
+class StudiolScraper(StudioScraperStrategy):
+    """Studiolの予約システムに対応するスクレイパー実装"""
     
     BASE_URL = "https://studi-ol.com"
     TIME_SLOT_DURATION = 1800  # 30分（秒）
@@ -253,12 +253,12 @@ class StudioOLScraper(StudioScraperStrategy):
         )
 
 def register(registry: ScraperRegistry) -> None:
-    """Studio-OLスクレイパーの登録"""
+    """Studiolスクレイパーの登録"""
     registry.register_strategy(
-        'studio_ol',
-        StudioOLScraper,
+        'studiol',
+        StudiolScraper,
         ScraperMetadata(
-            description="Studio-OL予約システム用スクレイパー",
+            description="Studiol予約システム用スクレイパー",
             version="1.0.0",
             requires_auth=False,
             base_url="https://studi-ol.com"
@@ -274,7 +274,7 @@ def main():
     )
 
     # スクレイパーの初期化
-    scraper = StudioOLScraper()
+    scraper = StudiolScraper()
     
     # テスト用のshop_id（実際の値に置き換えてください）
     shop_id = 673
