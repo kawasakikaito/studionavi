@@ -27,7 +27,7 @@ class StudiolScraper(StudioScraperStrategy):
         self._token: Optional[str] = None
         self.shop_id: Optional[str] = None
         self.room_name_map: Dict[str, str] = {}
-        self.thirty_minute_rooms: set[str] = set()
+        self.start_minute_map: Dict[str, int] = {}
 
     def establish_connection(self, shop_id: str) -> bool:
         """予約システムへの接続を確立し、トークンを取得する"""
@@ -70,21 +70,34 @@ class StudiolScraper(StudioScraperStrategy):
         
         # 部屋名と部屋IDのマッピング
         self.room_name_map = {}
-        # 30分開始の部屋のセット
-        self.thirty_minute_rooms = set()
+        # 開始時刻（分）マップ
+        self.start_minute_map = {}
+        # 30分単位予約フラグマップ
+        self.thirty_minute_slots_map = {}
         
         if room_match:
             room_data = room_match.group(1)
-            pairs = re.finditer(r'\{\s*id:\s*[\'"](\d+)[\'"]\s*,\s*title:\s*[\'"]([^\'"]+)[\'"]\s*\}', room_data)
-            self.room_name_map = {pair.group(1): pair.group(2) for pair in pairs}
-
-            # 30分開始の部屋情報を抽出（7st、9st、10st）
-            for room_id, room_name in self.room_name_map.items():
-                if any(room_name.startswith(prefix) for prefix in ['7st', '9st', '10st']):
-                    self.thirty_minute_rooms.add(room_name)
-        
-        if not self.room_name_map:
-            logger.warning("部屋情報の抽出に失敗しました")
+            # room-tabからstartTime属性を含む部屋情報を抽出
+            room_tabs = re.finditer(r'<li[^>]*?room-id="(\d+)"[^>]*?startTime="(\d+)"[^>]*?>', html_content)
+            
+            for tab in room_tabs:
+                room_id = tab.group(1)
+                try:
+                    start_time = int(tab.group(2))
+                    # startTime=60の場合は30分単位予約可能
+                    allows_thirty_minute_slots = (start_time == 60)
+                    
+                    if start_time not in [0, 30, 60]:
+                        logger.warning(f"無効な開始時刻を検出: room_id={room_id}, start_time={start_time}")
+                        start_time = 0
+                    
+                    self.start_minute_map[room_id] = start_time
+                    self.thirty_minute_slots_map[room_id] = allows_thirty_minute_slots
+                    
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"開始時刻の解析に失敗: room_id={room_id}, error={str(e)}")
+                    self.start_minute_map[room_id] = 0
+                    self.thirty_minute_slots_map[room_id] = False
 
     def _extract_token(self, html_content: str) -> Optional[str]:
         """HTMLコンテンツからトークンを抽出"""
@@ -105,19 +118,19 @@ class StudiolScraper(StudioScraperStrategy):
         logger.info(f"予約可能時間の取得を開始: date={target_date}")
         schedule_data = self._fetch_raw_schedule_data(target_date)
         return self._parse_schedule_data(schedule_data, target_date)
-
+    
     def _fetch_raw_schedule_data(self, target_date: date) -> List[dict]:
-        """APIから生のスケジュールデータを取得"""
-        url = f"{self.BASE_URL}/get_schedule_shop"
-        headers, data = self._prepare_schedule_request(target_date)
-        
-        try:
-            response = self._make_schedule_request(url, headers, data)
-            return self._parse_response(response)
-        except requests.RequestException as e:
-            raise StudioScraperError("スケジュールデータの取得に失敗しました") from e
-        except json.JSONDecodeError as e:
-            raise StudioScraperError("スケジュールデータのパースに失敗しました") from e
+            """APIから生のスケジュールデータを取得"""
+            url = f"{self.BASE_URL}/get_schedule_shop"
+            headers, data = self._prepare_schedule_request(target_date)
+            
+            try:
+                response = self._make_schedule_request(url, headers, data)
+                return self._parse_response(response)
+            except requests.RequestException as e:
+                raise StudioScraperError("スケジュールデータの取得に失敗しました") from e
+            except json.JSONDecodeError as e:
+                raise StudioScraperError("スケジュールデータのパースに失敗しました") from e
 
     def _prepare_schedule_request(self, target_date: date) -> tuple[dict, dict]:
         """スケジュールリクエストのヘッダーとデータを準備"""
@@ -196,8 +209,8 @@ class StudiolScraper(StudioScraperStrategy):
                     room_name=studio_name,
                     time_slots=merged_slots,
                     date=target_date,
-                    # 30分開始の部屋かどうかを設定
-                    starts_at_thirty=(studio_name in self.thirty_minute_rooms)
+                    # 開始時刻（分）を設定
+                    start_minute=self.start_minute_map.get(studio_name, 0)
                 )
             )
             logger.debug(f"スタジオ {studio_name} の利用可能枠: {len(merged_slots)}個")

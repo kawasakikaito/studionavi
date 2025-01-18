@@ -1,4 +1,3 @@
-# scraper_base.py
 from typing import Protocol, List, Dict, Optional, Union
 from datetime import date, time
 import json
@@ -62,15 +61,24 @@ class StudioAvailability(BaseModel):
     room_name: str
     date: date
     time_slots: List[StudioTimeSlot]
-    starts_at_thirty: bool = False  # デフォルトはFalse（00分スタート）
+    start_minute: int = 0  # 開始時刻（分）。0, 15, 30, 45などの値を取る
 
-    def to_dict(self) -> Dict[str, Union[str, List[Dict[str, str]], bool]]:
+    @field_validator('start_minute')
+    @classmethod
+    def validate_start_minute(cls, v: int) -> int:
+        """開始時刻の妥当性チェック"""
+        # 0以上60未満のチェックを修正
+        if v >= 60 or v < 0:  # 0を許容するように修正
+            raise StudioValidationError("開始時刻（分）は0以上60未満である必要があります")
+        return v
+
+    def to_dict(self) -> Dict[str, Union[str, List[Dict[str, str]], int]]:
         """空き状況をJSON互換の辞書形式に変換"""
         return {
             "room_name": self.room_name,
             "date": self.date.isoformat(),
             "time_slots": [slot.to_dict() for slot in self.time_slots],
-            "starts_at_thirty": self.starts_at_thirty
+            "start_minute": self.start_minute
         }
 
 class StudioScraperStrategy(Protocol):

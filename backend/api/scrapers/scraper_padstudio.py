@@ -102,23 +102,23 @@ class PadStudioScraper(StudioScraperStrategy):
         return response
 
     def _parse_schedule_page(
-        self,
-        html_content: str,
-        target_date: date
-    ) -> List[StudioAvailability]:
-        """スケジュールページをパースして利用可能時間を抽出
-        
-        PAD Studioは常に00分スタートのスタジオのみをサポートしているため、
-        starts_at_thirtyは常にFalseとなります。
-        """
-        soup = BeautifulSoup(html_content, 'html.parser')
-        schedule_table = self._find_schedule_table(soup)
-        
-        if not schedule_table:
-            return []
+            self,
+            html_content: str,
+            target_date: date
+        ) -> List[StudioAvailability]:
+            """スケジュールページをパースして利用可能時間を抽出
+            
+            PAD Studioは常に00分スタートのスタジオのみをサポートしているため、
+            start_minuteは常に0となります。
+            """
+            soup = BeautifulSoup(html_content, 'html.parser')
+            schedule_table = self._find_schedule_table(soup)
+            
+            if not schedule_table:
+                return []
 
-        time_slots = self._extract_time_slots(schedule_table)
-        return self._extract_studio_availabilities(schedule_table, time_slots, target_date)
+            time_slots = self._extract_time_slots(schedule_table)
+            return self._extract_studio_availabilities(schedule_table, time_slots, target_date)
 
     def _find_schedule_table(self, soup: BeautifulSoup) -> Optional[BeautifulSoup]:
         """スケジュールテーブルを検索"""
@@ -170,7 +170,7 @@ class PadStudioScraper(StudioScraperStrategy):
                         room_name=studio_name,
                         date=target_date,
                         time_slots=available_slots,
-                        starts_at_thirty=False  # PAD Studioは常に00分スタート
+                        start_minute=0  # PAD Studioは常に00分スタート
                     )
                 )
                 
