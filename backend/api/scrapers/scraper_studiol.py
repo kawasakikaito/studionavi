@@ -20,7 +20,6 @@ class StudiolScraper(StudioScraperStrategy):
     
     BASE_URL = "https://studi-ol.com"
     TIME_SLOT_DURATION = 1800  # 30分（秒）
-    DEBUG_DIR = Path("debug_output")
     
     def __init__(self):
         """初期化処理"""
@@ -29,15 +28,6 @@ class StudiolScraper(StudioScraperStrategy):
         self.shop_id: Optional[str] = None
         self.room_name_map: Dict[str, str] = {}
         self.thirty_minute_rooms: set[str] = set()
-        
-        # デバッグディレクトリの作成
-        self.DEBUG_DIR.mkdir(exist_ok=True)
-    
-    def _save_debug_html(self, content: str, filename: str) -> None:
-        """デバッグ用にHTMLコンテンツを保存"""
-        debug_file = self.DEBUG_DIR / filename
-        debug_file.write_text(content, encoding='utf-8')
-        logger.debug(f"デバッグ情報を保存しました: {debug_file}")
 
     def establish_connection(self, shop_id: str) -> bool:
         """予約システムへの接続を確立し、トークンを取得する"""
@@ -60,9 +50,6 @@ class StudiolScraper(StudioScraperStrategy):
             
             if not response.text.strip():
                 raise StudioScraperError("接続ページが空です")
-
-            # デバッグ用にHTMLを保存
-            self._save_debug_html(response.text, f"shop_{shop_id}_init.html")
 
             self._extract_room_info(response.text)
             token = self._extract_token(response.text)
@@ -126,13 +113,6 @@ class StudiolScraper(StudioScraperStrategy):
         
         try:
             response = self._make_schedule_request(url, headers, data)
-            
-            # デバッグ用にAPIレスポンスを保存
-            self._save_debug_html(
-                json.dumps(response.json(), indent=2, ensure_ascii=False),
-                f"schedule_{target_date.isoformat()}.json"
-            )
-            
             return self._parse_response(response)
         except requests.RequestException as e:
             raise StudioScraperError("スケジュールデータの取得に失敗しました") from e
@@ -264,38 +244,3 @@ def register(registry: ScraperRegistry) -> None:
             base_url="https://studi-ol.com"
         )
     )
-
-def main():
-    """デバッグ用のメイン関数"""
-    # ロギングの設定
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-
-    # スクレイパーの初期化
-    scraper = StudiolScraper()
-    
-    # テスト用のshop_id（実際の値に置き換えてください）
-    shop_id = 673
-    
-    try:
-        # 接続確立
-        scraper.establish_connection(shop_id)
-        
-        # 本日の日付で空き状況を取得
-        target_date = date.today()
-        availabilities = scraper.fetch_available_times(target_date)
-        
-        # 結果をJSON形式で保存
-        result_json = scraper.to_json(availabilities)
-        debug_file = scraper.DEBUG_DIR / f"availabilities_{target_date.isoformat()}.json"
-        debug_file.write_text(result_json, encoding='utf-8')
-        
-        logger.info(f"デバッグ情報を {scraper.DEBUG_DIR} に保存しました")
-        
-    except Exception as e:
-        logger.error(f"エラーが発生しました: {str(e)}", exc_info=True)
-
-if __name__ == "__main__":
-    main()
