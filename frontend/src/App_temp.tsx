@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -50,68 +49,57 @@ import {
 } from "@/components/ui/popover";
 import { ja } from "date-fns/locale";
 import { StudioSearchComponent } from "@/components/StudioSearchComponent";
-
+import StudioAvailabilityResults from "./components/StudioAvailabilityResults";
 interface Studio {
   id: number;
   name: string;
   address: string;
   hours: string;
-  self_booking_start: string;
+  selfBookingStart: string;
 }
 
 const PRESET_STUDIOS: Studio[] = [
   {
-    id: 95,
-    name: "Sound Lab Studios",
+    id: 1,
+    name: "パッドスタジオ",
     address: "東京都渋谷区神南1-2-3",
     hours: "10:00 - 26:00",
-    self_booking_start: "前日 12:00〜",
+    selfBookingStart: "前日 12:00〜",
   },
   {
-    id: 96,
-    name: "Melody Box Studio",
+    id: 2,
+    name: "ベースオントップ アメ村店",
     address: "東京都新宿区高田馬場4-5-6",
     hours: "9:00 - 27:00",
-    self_booking_start: "3日前 10:00〜",
+    selfBookingStart: "3日前 10:00〜",
   },
   {
     id: 97,
     name: "Rock Heaven",
     address: "東京都北区王子7-8-9",
     hours: "10:00 - 25:00",
-    self_booking_start: "当日 0:00〜",
+    selfBookingStart: "当日 0:00〜",
   },
   {
     id: 98,
     name: "Studio Mission",
     address: "東京都世田谷区下北沢1-10-12",
     hours: "11:00 - 26:00",
-    self_booking_start: "2日前 15:00〜",
+    selfBookingStart: "2日前 15:00〜",
   },
   {
     id: 99,
     name: "Jam Station",
     address: "東京都港区六本木13-14-15",
     hours: "8:00 - 27:00",
-    self_booking_start: "前日 18:00〜",
+    selfBookingStart: "前日 18:00〜",
   },
 ];
 
-const timeOptions = [
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00",
-  "14:00",
-  "15:00",
-  "16:00",
-  "17:00",
-  "18:00",
-  "19:00",
-  "20:00",
-  "21:00",
-  "22:00",
-];
+const timeOptions = Array.from({ length: 25 }, (_, i) => {
+  const hour = i.toString().padStart(2, "0");
+  return `${hour}:00`;
+});
 
 const FOOTER_SECTIONS = [
   {
@@ -147,8 +135,7 @@ const durationOptions = ["1時間", "2時間", "3時間", "4時間", "5時間"];
 const MusicStudioBookingApp = () => {
   const [selectedStudios, setSelectedStudios] = useState([
     PRESET_STUDIOS[0],
-    PRESET_STUDIOS[2],
-    PRESET_STUDIOS[4],
+    PRESET_STUDIOS[1],
   ]);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [searchStartTime, setSearchStartTime] = useState("");
@@ -420,7 +407,7 @@ const MusicStudioBookingApp = () => {
                               <div className="flex items-center text-sm text-muted-foreground">
                                 <Calendar className="h-3 w-3 mr-2 flex-shrink-0" />
                                 <span className="truncate">
-                                  予約開始：{studio.self_booking_start}
+                                  予約開始：{studio.selfBookingStart}
                                 </span>
                               </div>
                             </div>
@@ -502,70 +489,68 @@ const MusicStudioBookingApp = () => {
                   {/* 時間帯と予約時間 - 7列 */}
                   <div className="sm:col-span-7">
                     <Label className="text-sm mb-2">時間帯・予約時間</Label>
-                    <div className="grid grid-cols-12 gap-2">
-                      {/* 時間帯 - 8列（常に横並び） */}
-                      <div className="col-span-12 sm:col-span-8">
-                        <div className="flex items-center">
-                          <Select
-                            value={searchStartTime}
-                            onValueChange={setSearchStartTime}
-                          >
-                            <SelectTrigger
-                              className={cn(
-                                "w-[130px] sm:w-full",
-                                !searchStartTime && "text-muted-foreground"
-                              )}
+                    <div className="grid grid-cols-1 sm:grid-cols-7 gap-4">
+                      {/* 時間帯 - 5列（常に横並び） */}
+                      <div className="sm:col-span-5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <Select
+                              value={searchStartTime}
+                              onValueChange={setSearchStartTime}
                             >
-                              <SelectValue placeholder="開始時刻" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {timeOptions.map((time) => (
-                                <SelectItem key={time} value={time}>
-                                  {time}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                              <SelectTrigger
+                                className={cn(
+                                  !searchStartTime && "text-muted-foreground"
+                                )}
+                              >
+                                <SelectValue placeholder="開始時刻" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeOptions.map((time) => (
+                                  <SelectItem key={time} value={time}>
+                                    {time}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                          <span className="mx-2 flex-shrink-0 text-muted-foreground">
+                          <span className="flex-shrink-0 text-muted-foreground">
                             〜
                           </span>
 
-                          <Select
-                            value={searchEndTime}
-                            onValueChange={setSearchEndTime}
-                          >
-                            <SelectTrigger
-                              className={cn(
-                                "w-[130px] sm:w-full",
-                                !searchEndTime && "text-muted-foreground"
-                              )}
+                          <div className="flex-1">
+                            <Select
+                              value={searchEndTime}
+                              onValueChange={setSearchEndTime}
                             >
-                              <SelectValue placeholder="終了時刻" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {timeOptions.map((time) => (
-                                <SelectItem key={time} value={time}>
-                                  {time}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                              <SelectTrigger
+                                className={cn(
+                                  !searchEndTime && "text-muted-foreground"
+                                )}
+                              >
+                                <SelectValue placeholder="終了時刻" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeOptions.map((time) => (
+                                  <SelectItem key={time} value={time}>
+                                    {time}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
 
-                      {/* 予約時間 - 4列（モバイルでは下に配置） */}
-                      <div className="col-span-12 sm:col-span-4 mt-2 sm:mt-0">
-                        <Label className="text-xs text-muted-foreground sm:hidden">
-                          予約時間
-                        </Label>
+                      {/* 予約時間 - 2列 */}
+                      <div className="sm:col-span-2">
                         <Select
                           value={selectedDuration}
                           onValueChange={setSelectedDuration}
                         >
                           <SelectTrigger
                             className={cn(
-                              "w-full",
                               !selectedDuration && "text-muted-foreground"
                             )}
                           >
@@ -597,85 +582,18 @@ const MusicStudioBookingApp = () => {
             {/* 検索結果 */}
             {searchPerformed && (
               <Card>
-                <CardHeader className="space-y-1">
+                <CardHeader>
                   <CardTitle className="text-2xl">検索結果</CardTitle>
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                    <span>
-                      {format(selectedDate!, "yyyy年MM月dd日 (eee)", {
-                        locale: ja,
-                      })}
-                    </span>
-                    <span>•</span>
-                    <span>
-                      {searchStartTime} ～ {searchEndTime}
-                    </span>
-                    <span>•</span>
-                    <span>{selectedDuration}</span>
-                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {selectedStudios.map((studio) => (
-                      <Card key={studio.id} className="flex flex-col">
-                        <CardContent className="flex-1 p-4">
-                          <div className="space-y-4">
-                            <div>
-                              <h3 className="text-lg font-semibold line-clamp-1">
-                                {studio.name}
-                              </h3>
-                              <div className="mt-3 space-y-2">
-                                <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                                  <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                  <span className="line-clamp-2">
-                                    {studio.address}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Clock className="h-4 w-4 flex-shrink-0" />
-                                  <span>{studio.hours}</span>
-                                </div>
-                                <div className="pt-2">
-                                  <Badge
-                                    variant="secondary"
-                                    className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                  >
-                                    予約可能
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <Button
-                                className="w-full flex items-center justify-center gap-2"
-                                variant="gradient"
-                              >
-                                <Globe className="h-4 w-4" />
-                                <span className="hidden sm:inline">Web</span>
-                                予約
-                              </Button>
-                              <Button
-                                variant="outline"
-                                className="w-full flex items-center justify-center gap-2"
-                              >
-                                <Phone className="h-4 w-4" />
-                                <span className="hidden sm:inline">電話</span>
-                                予約
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                  <div className="flex justify-center mt-6">
-                    <Button
-                      variant="outline"
-                      className="w-full sm:w-auto min-w-[200px]"
-                      onClick={resetSearch}
-                    >
-                      新しく検索
-                    </Button>
-                  </div>
+                <CardContent>
+                  <StudioAvailabilityResults
+                    studios={selectedStudios}
+                    selectedDate={selectedDate!}
+                    searchStartTime={searchStartTime}
+                    searchEndTime={searchEndTime}
+                    selectedDuration={selectedDuration}
+                    onReset={resetSearch}
+                  />
                 </CardContent>
               </Card>
             )}

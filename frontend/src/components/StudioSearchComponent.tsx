@@ -9,7 +9,7 @@ interface Studio {
   name: string;
   address: string;
   hours: string;
-  self_booking_start: string;
+  selfBookingStart: string;
 }
 
 interface StudioSearchComponentProps {
