@@ -39,5 +39,21 @@ STUDIO_CONFIGS: Dict[str, StudioConfig] = {
             scraper_type="studiol",
             shop_id="546",
         ),
+    ),
+    "4": StudioConfig(
+        id=4,
+        name="ベースオントップ 梅田店",
+        scraper=ScraperConfig(
+            scraper_type="studiol",
+            shop_id="671",
+        ),
+    ),
+    "5": StudioConfig(
+        id=5,
+        name="ベースオントップ 心斎橋",
+        scraper=ScraperConfig(
+            scraper_type="studiol",
+            shop_id="682",
+        ),
     )
 }
