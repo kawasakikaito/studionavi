@@ -1,4 +1,3 @@
-# scraper_registry.py
 from typing import Dict, Type, Optional, List, Any
 from dataclasses import dataclass, field
 from datetime import date

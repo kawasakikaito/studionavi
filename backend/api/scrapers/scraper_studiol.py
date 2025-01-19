@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Set
 import requests
 import re
 import json
@@ -14,14 +14,13 @@ from api.scrapers.scraper_base import (
 from api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
 from config.logging_config import setup_logger
 
-# ロギング設定を追加
 logger = setup_logger(__name__)
 
 class StudiolScraper(StudioScraperStrategy):
     """Studiolの予約システムに対応するスクレイパー実装"""
     
     BASE_URL = "https://studi-ol.com"
-    MAX_RETRIES = 5  # Studiol用にリトライ回数をカスタマイズ
+    MAX_RETRIES = 5
     MIN_WAIT = 3
     MAX_WAIT = 15
     TIME_SLOT_DURATION = 1800  # 30分（秒）
@@ -32,7 +31,7 @@ class StudiolScraper(StudioScraperStrategy):
         self._token: Optional[str] = None
         self.shop_id: Optional[str] = None
         self.room_name_map: Dict[str, str] = {}
-        self.start_minute_map: Dict[str, int] = {}
+        self.start_minutes_map: Dict[str, List[int]] = {}  # 複数の開始時刻を管理
         self.thirty_minute_slots_map: Dict[str, bool] = {}
 
     def establish_connection(self, shop_id: str) -> bool:
@@ -80,8 +79,8 @@ class StudiolScraper(StudioScraperStrategy):
         
         # 部屋名と部屋IDのマッピング
         self.room_name_map = {}
-        # 開始時刻（分）マップ
-        self.start_minute_map = {}
+        # 開始時刻（分）マップ（複数の値を保持）
+        self.start_minutes_map = {}
         # 30分単位予約フラグマップ
         self.thirty_minute_slots_map = {}
         
@@ -98,25 +97,29 @@ class StudiolScraper(StudioScraperStrategy):
                 room_id = tab.group(1)
                 try:
                     start_time = int(tab.group(2))
-                    # startTime=60の場合は30に変換（30分単位予約可能フラグは保持）
-                    allows_thirty_minute_slots = (start_time == 60)
+                    # startTime=60の場合は[0, 30]として保持（両方の時間から予約可能）
                     if start_time == 60:
-                        start_time = 30
-                    
-                    if start_time not in [0, 30]:
-                        logger.warning(f"無効な開始時刻を検出: room_id={room_id}, start_time={start_time}")
-                        start_time = 0
+                        start_minutes = [0, 30]
+                        allows_thirty_minute_slots = True
+                    else:
+                        if start_time not in [0, 30]:
+                            logger.warning(f"無効な開始時刻を検出: room_id={room_id}, start_time={start_time}")
+                            start_minutes = [0]
+                        else:
+                            start_minutes = [start_time]
+                        allows_thirty_minute_slots = False
                     
                     room_name = self.room_name_map.get(room_id)
                     if room_name:
-                        self.start_minute_map[room_name] = start_time
+                        self.start_minutes_map[room_name] = start_minutes
                         self.thirty_minute_slots_map[room_name] = allows_thirty_minute_slots
+                        logger.debug(f"部屋 {room_name} の設定: start_minutes={start_minutes}, allows_thirty_minute_slots={allows_thirty_minute_slots}")
                     
                 except (ValueError, TypeError) as e:
                     logger.warning(f"開始時刻の解析に失敗: room_id={room_id}, error={str(e)}")
                     room_name = self.room_name_map.get(room_id)
                     if room_name:
-                        self.start_minute_map[room_name] = 0
+                        self.start_minutes_map[room_name] = [0]
                         self.thirty_minute_slots_map[room_name] = False
 
     def _extract_token(self, html_content: str) -> Optional[str]:
@@ -214,12 +217,17 @@ class StudiolScraper(StudioScraperStrategy):
         
         for room_name, time_slots in studio_time_slots.items():
             merged_slots = self._merge_consecutive_slots(sorted(time_slots))
+            # start_minutes_mapから開始時刻群を取得（デフォルトは[0]）
+            start_minutes = self.start_minutes_map.get(room_name, [0])
+            allows_thirty_minute_slots = self.thirty_minute_slots_map.get(room_name, False)
+            
             studio_availabilities.append(
                 StudioAvailability(
                     room_name=room_name,
                     time_slots=merged_slots,
                     date=target_date,
-                    start_minute=self.start_minute_map.get(room_name, 0)
+                    start_minutes=start_minutes,
+                    allows_thirty_minute_slots=allows_thirty_minute_slots
                 )
             )
             logger.debug(f"スタジオ {room_name} の利用可能枠: {len(merged_slots)}個")
@@ -227,27 +235,48 @@ class StudiolScraper(StudioScraperStrategy):
         return studio_availabilities
 
     def _merge_consecutive_slots(self, time_slots: List[datetime]) -> List[StudioTimeSlot]:
-        """連続した時間枠をマージ"""
+        """連続または重複する時間枠をマージ"""
         merged_slots = []
         if not time_slots:
             return merged_slots
             
-        slot_start = time_slots[0]
-        prev_time = slot_start
+        # 時間枠をソート
+        sorted_slots = sorted(time_slots)
         
-        for curr_time in time_slots[1:]:
-            if (curr_time - prev_time).total_seconds() > self.TIME_SLOT_DURATION:
-                merged_slots.append(self._create_time_slot(slot_start, prev_time))
-                slot_start = curr_time
-            prev_time = curr_time
+        # マージ処理の初期化
+        slot_start = sorted_slots[0]
+        current_end = slot_start + timedelta(minutes=30)
         
-        merged_slots.append(self._create_time_slot(slot_start, prev_time))
+        for current_time in sorted_slots[1:]:
+            # 現在の終了時刻と次のスロットの開始時刻を比較
+            next_slot_end = current_time + timedelta(minutes=30)
+            
+            # 時間を分単位に変換して比較
+            current_end_minutes = (current_end.hour * 60 + current_end.minute) % (24 * 60)
+            current_time_minutes = (current_time.hour * 60 + current_time.minute) % (24 * 60)
+            
+            # 深夜0時をまたぐ場合の調整
+            if current_time_minutes < current_end_minutes:
+                current_time_minutes += 24 * 60
+                
+            if current_time_minutes <= current_end_minutes:
+                # 重複または連続している場合は終了時刻を更新
+                current_end = max(current_end, next_slot_end)
+            else:
+                # 重複も連続もしていない場合は新しいスロットを作成
+                merged_slots.append(self._create_time_slot(slot_start, current_end))
+                slot_start = current_time
+                current_end = next_slot_end
+        
+        # 最後の時間枠を追加
+        merged_slots.append(self._create_time_slot(slot_start, current_end))
+        
         return merged_slots
 
     def _create_time_slot(self, start: datetime, end: datetime) -> StudioTimeSlot:
         """時間枠オブジェクトを作成"""
         start_time = time(hour=start.hour, minute=start.minute)
-        end_time = (end + timedelta(minutes=30)).time()
+        end_time = time(hour=end.hour % 24, minute=end.minute)  # 24時以降の処理を修正
         
         return StudioTimeSlot(
             start_time=start_time,

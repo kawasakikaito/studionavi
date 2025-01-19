@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, date, time
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Set
 import logging
 from pathlib import Path
 from api.scrapers.scraper_base import (
@@ -13,7 +13,6 @@ from api.scrapers.scraper_base import (
 from api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
 from config.logging_config import setup_logger
 
-# ロギング設定
 logger = setup_logger(__name__)
 
 class PadStudioScraper(StudioScraperStrategy):
@@ -73,6 +72,9 @@ class PadStudioScraper(StudioScraperStrategy):
     def fetch_available_times(self, target_date: date) -> List[StudioAvailability]:
         """指定された日付の予約可能時間を取得
         
+        PAD Studioは常に00分スタートのスタジオのみをサポートしているため、
+        start_minutesは常に[0]となります。
+        
         Args:
             target_date: 対象日付
             
@@ -123,27 +125,23 @@ class PadStudioScraper(StudioScraperStrategy):
         return response
 
     def _parse_schedule_page(
-            self,
-            html_content: str,
-            target_date: date
-        ) -> List[StudioAvailability]:
-            """スケジュールページをパースして利用可能時間を抽出
-            
-            PAD Studioは常に00分スタートのスタジオのみをサポートしているため、
-            start_minuteは常に0となります。
-            """
-            logger.debug("スケジュールページのパースを開始")
-            soup = BeautifulSoup(html_content, 'html.parser')
-            schedule_table = self._find_schedule_table(soup)
-            
-            if not schedule_table:
-                logger.warning("スケジュールテーブルが見つかりません")
-                return []
+        self,
+        html_content: str,
+        target_date: date
+    ) -> List[StudioAvailability]:
+        """スケジュールページをパースして利用可能時間を抽出"""
+        logger.debug("スケジュールページのパースを開始")
+        soup = BeautifulSoup(html_content, 'html.parser')
+        schedule_table = self._find_schedule_table(soup)
+        
+        if not schedule_table:
+            logger.warning("スケジュールテーブルが見つかりません")
+            return []
 
-            time_slots = self._extract_time_slots(schedule_table)
-            result = self._extract_studio_availabilities(schedule_table, time_slots, target_date)
-            logger.debug(f"スケジュールページのパースが完了: {len(result)}件のスタジオ情報")
-            return result
+        time_slots = self._extract_time_slots(schedule_table)
+        result = self._extract_studio_availabilities(schedule_table, time_slots, target_date)
+        logger.debug(f"スケジュールページのパースが完了: {len(result)}件のスタジオ情報")
+        return result
 
     def _find_schedule_table(self, soup: BeautifulSoup) -> Optional[BeautifulSoup]:
         """スケジュールテーブルを検索"""
@@ -181,9 +179,9 @@ class PadStudioScraper(StudioScraperStrategy):
         return time_slots
 
     def _extract_studio_availabilities(
-        self, 
-        schedule_table: BeautifulSoup, 
-        time_slots: List[Tuple[time, time]], 
+        self,
+        schedule_table: BeautifulSoup,
+        time_slots: List[Tuple[time, time]],
         target_date: date
     ) -> List[StudioAvailability]:
         """スタジオごとの利用可能時間を抽出"""
@@ -199,12 +197,14 @@ class PadStudioScraper(StudioScraperStrategy):
                 
             available_slots = self._get_available_slots(row, time_slots)
             if available_slots:
+                # PAD Studioは常に00分スタート、30分単位予約は不可
                 studio_availabilities.append(
                     StudioAvailability(
                         room_name=studio_name,
                         date=target_date,
                         time_slots=available_slots,
-                        start_minute=0  # PAD Studioは常に00分スタート
+                        start_minutes=[0],  # 常に[0]（00分スタート）
+                        allows_thirty_minute_slots=False  # 常にFalse
                     )
                 )
                 logger.debug(f"スタジオ {studio_name} の利用可能枠: {len(available_slots)}個")
@@ -219,8 +219,8 @@ class PadStudioScraper(StudioScraperStrategy):
         return cells[0].get_text(strip=True)
 
     def _get_available_slots(
-        self, 
-        row: BeautifulSoup, 
+        self,
+        row: BeautifulSoup,
         time_slots: List[Tuple[time, time]]
     ) -> List[StudioTimeSlot]:
         """行から利用可能な時間枠を取得"""
