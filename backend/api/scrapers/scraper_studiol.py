@@ -12,23 +12,10 @@ from api.scrapers.scraper_base import (
     StudioAvailability
 )
 from api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
+from config.logging_config import setup_logger
 
 # ロギング設定を追加
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# ファイルハンドラーの設定
-log_file = Path(__file__).parent / "logs" / "studiol_scraper.log"
-log_file.parent.mkdir(exist_ok=True)  # logsディレクトリが無ければ作成
-file_handler = logging.FileHandler(log_file, encoding='utf-8')
-file_handler.setLevel(logging.DEBUG)
-
-# フォーマッターの設定
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-# ロガーにハンドラーを追加
-logger.addHandler(file_handler)
+logger = setup_logger(__name__)
 
 class StudiolScraper(StudioScraperStrategy):
     """Studiolの予約システムに対応するスクレイパー実装"""
