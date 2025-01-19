@@ -1,7 +1,20 @@
 from typing import Protocol, List, Dict, Optional, Union
-from datetime import date, time
-import json
+from datetime import date, time, datetime, timedelta
 from pydantic import BaseModel, field_validator
+import json
+import logging
+import requests
+from functools import wraps
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+    RetryError
+)
+
+logger = logging.getLogger(__name__)
 
 class StudioScraperError(Exception):
     """スクレイパーの基本例外クラス"""
@@ -38,7 +51,6 @@ class StudioTimeSlot(BaseModel):
         start_minutes = start.hour * 60 + start.minute
         end_minutes = end.hour * 60 + end.minute
         
-        # 終了時刻が00:00の場合は24:00として扱う
         if end_minutes == 0:
             end_minutes = 24 * 60
             
@@ -61,19 +73,16 @@ class StudioAvailability(BaseModel):
     room_name: str
     date: date
     time_slots: List[StudioTimeSlot]
-    start_minute: int = 0  # 開始時刻（分）。0, 15, 30, 45などの値を取る
+    start_minute: int = 0
 
     @field_validator('start_minute')
     @classmethod
     def validate_start_minute(cls, v: int) -> int:
-        """開始時刻の妥当性チェック"""
-        # 0以上60未満のチェックを修正
-        if v >= 60 or v < 0:  # 0を許容するように修正
+        if v >= 60 or v < 0:
             raise StudioValidationError("開始時刻（分）は0以上60未満である必要があります")
         return v
 
     def to_dict(self) -> Dict[str, Union[str, List[Dict[str, str]], int]]:
-        """空き状況をJSON互換の辞書形式に変換"""
         return {
             "room_name": self.room_name,
             "date": self.date.isoformat(),
@@ -82,50 +91,88 @@ class StudioAvailability(BaseModel):
         }
 
 class StudioScraperStrategy(Protocol):
-    """スタジオスクレイパーのインターフェースを定義するプロトコル"""
+    """スタジオスクレイパーの基底クラス"""
     
-    def establish_connection(self, shop_id: str) -> bool:
-        """予約システムへの接続を確立する
+    # デフォルトの設定
+    BASE_URL: str
+    MAX_RETRIES = 3
+    MIN_WAIT = 4
+    MAX_WAIT = 10
+    
+    def __init__(self):
+        self.session: requests.Session = requests.Session()
+        self._configure_retry_policy()
+    
+    def _configure_retry_policy(self):
+        """リトライポリシーの設定"""
+        self._retry_decorator = retry(
+            stop=stop_after_attempt(self.MAX_RETRIES),
+            wait=wait_exponential(multiplier=1, min=self.MIN_WAIT, max=self.MAX_WAIT),
+            retry=retry_if_exception_type((
+                requests.ConnectionError,
+                requests.Timeout,
+                requests.HTTPError
+            )),
+            before_sleep=before_sleep_log(logger, logging.INFO),
+            after=self._log_retry_stats
+        )
+    
+    def _log_retry_stats(self, retry_state):
+        """リトライの統計情報をログに記録"""
+        if retry_state.attempt_number > 1:
+            logger.info(
+                f"リトライ試行 {retry_state.attempt_number}/{self.MAX_RETRIES} "
+                f"経過時間: {retry_state.seconds_since_start:.1f}秒"
+            )
+    
+    def _make_request(self, method: str, url: str, **kwargs) -> requests.Response:
+        """共通のリクエストメソッド"""
+        @wraps(self._make_request)
+        @self._retry_decorator
+        def _wrapped_request():
+            try:
+                response = self.session.request(
+                    method, 
+                    url, 
+                    timeout=(10, 30),  # 接続タイムアウト, 読み取りタイムアウト
+                    **kwargs
+                )
+                response.raise_for_status()
+                return response
+                
+            except requests.Timeout as e:
+                logger.error(f"リクエストがタイムアウト: {str(e)}")
+                raise StudioScraperError("リクエストがタイムアウトしました") from e
+                
+            except requests.HTTPError as e:
+                status_code = e.response.status_code if e.response else "不明"
+                logger.error(f"HTTPエラー({status_code}): {str(e)}")
+                raise StudioScraperError(f"HTTPエラー({status_code})が発生しました") from e
+                
+            except requests.ConnectionError as e:
+                logger.error(f"接続エラー: {str(e)}")
+                raise StudioScraperError("接続エラーが発生しました") from e
+                
+            except requests.RequestException as e:
+                logger.error(f"リクエストエラー: {str(e)}")
+                raise StudioScraperError("リクエストに失敗しました") from e
         
-        Args:
-            shop_id: スタジオの店舗ID（必須）
-            
-        Returns:
-            bool: 接続が成功したかどうか
-            
-        Raises:
-            StudioConnectionError: 接続に失敗した場合
-            StudioAuthenticationError: 認証に失敗した場合
-        """
-        ...
+        try:
+            return _wrapped_request()
+        except RetryError as e:
+            logger.error(f"リトライ上限に到達: {str(e)}")
+            raise StudioScraperError("リトライ後も要求が失敗しました") from e
+
+    def establish_connection(self, shop_id: str) -> bool:
+        """予約システムへの接続を確立する（各スクレイパーで実装）"""
+        raise NotImplementedError
 
     def fetch_available_times(self, target_date: date) -> List[StudioAvailability]:
-        """指定された日付の予約可能時間を取得する
-        
-        Args:
-            target_date: 対象日付
-            
-        Returns:
-            List[StudioAvailability]: 予約可能時間のリスト
-            
-        Raises:
-            StudioScraperError: スクレイピングに失敗した場合
-        """
-        ...
+        """指定された日付の予約可能時間を取得する（各スクレイパーで実装）"""
+        raise NotImplementedError
 
     def to_json(self, availabilities: List[StudioAvailability], pretty: bool = True) -> str:
-        """空き状況をJSON形式の文字列に変換する
-        
-        Args:
-            availabilities: 空き状況のリスト
-            pretty: 整形されたJSONを出力するかどうか
-            
-        Returns:
-            str: JSON形式の文字列
-            
-        Raises:
-            StudioParseError: JSON変換に失敗した場合
-        """
+        """空き状況をJSON形式の文字列に変換"""
         try:
             return json.dumps(
                 [availability.to_dict() for availability in availabilities],

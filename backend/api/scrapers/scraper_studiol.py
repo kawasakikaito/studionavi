@@ -1,7 +1,7 @@
+from typing import List, Optional, Dict
 import requests
 import re
 import json
-from typing import List, Optional, Dict
 from datetime import datetime, date, time, timedelta
 import logging
 from pathlib import Path
@@ -13,21 +13,40 @@ from api.scrapers.scraper_base import (
 )
 from api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
 
+# ロギング設定を追加
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# ファイルハンドラーの設定
+log_file = Path(__file__).parent / "logs" / "studiol_scraper.log"
+log_file.parent.mkdir(exist_ok=True)  # logsディレクトリが無ければ作成
+file_handler = logging.FileHandler(log_file, encoding='utf-8')
+file_handler.setLevel(logging.DEBUG)
+
+# フォーマッターの設定
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+# ロガーにハンドラーを追加
+logger.addHandler(file_handler)
 
 class StudiolScraper(StudioScraperStrategy):
     """Studiolの予約システムに対応するスクレイパー実装"""
     
     BASE_URL = "https://studi-ol.com"
+    MAX_RETRIES = 5  # Studiol用にリトライ回数をカスタマイズ
+    MIN_WAIT = 3
+    MAX_WAIT = 15
     TIME_SLOT_DURATION = 1800  # 30分（秒）
     
     def __init__(self):
         """初期化処理"""
-        self.session: requests.Session = requests.Session()
+        super().__init__()
         self._token: Optional[str] = None
         self.shop_id: Optional[str] = None
         self.room_name_map: Dict[str, str] = {}
         self.start_minute_map: Dict[str, int] = {}
+        self.thirty_minute_slots_map: Dict[str, bool] = {}
 
     def establish_connection(self, shop_id: str) -> bool:
         """予約システムへの接続を確立し、トークンを取得する"""
@@ -37,20 +56,21 @@ class StudiolScraper(StudioScraperStrategy):
             logger.info(f"接続を確立しました: shop_id={shop_id}")
             return True
             
-        except requests.RequestException as e:
+        except StudioScraperError:
+            raise
+        except Exception as e:
             logger.error(f"接続の確立に失敗: {str(e)}")
-            raise StudioScraperError(f"接続の確立に失敗しました") from e
+            raise StudioScraperError("接続の確立に失敗しました") from e
 
     def _fetch_token(self, shop_id: str) -> str:
-        """ページからトークンとroom_name_mapを取得"""
+        """ページからトークンを取得"""
         url = f"{self.BASE_URL}/shop/{shop_id}"
         try:
-            response = self.session.get(url)
-            response.raise_for_status()
+            response = self._make_request("GET", url)
             
             if not response.text.strip():
                 raise StudioScraperError("接続ページが空です")
-
+                
             self._extract_room_info(response.text)
             token = self._extract_token(response.text)
             
@@ -60,8 +80,11 @@ class StudiolScraper(StudioScraperStrategy):
             logger.debug(f"トークンを取得しました: {token[:10]}...")
             return token
             
-        except requests.RequestException as e:
-            raise StudioScraperError(f"トークンの取得に失敗しました") from e
+        except StudioScraperError:
+            raise
+        except Exception as e:
+            logger.error(f"予期せぬエラー: {str(e)}")
+            raise StudioScraperError("トークンの取得に失敗しました") from e
 
     def _extract_room_info(self, html_content: str) -> None:
         """HTMLコンテンツから部屋情報を抽出"""
@@ -77,6 +100,10 @@ class StudiolScraper(StudioScraperStrategy):
         
         if room_match:
             room_data = room_match.group(1)
+            # 部屋名とIDのマッピングを抽出
+            pairs = re.finditer(r'\{\s*id:\s*[\'"](\d+)[\'"]\s*,\s*title:\s*[\'"]([^\'"]+)[\'"]\s*\}', room_data)
+            self.room_name_map = {pair.group(1): pair.group(2) for pair in pairs}
+            
             # room-tabからstartTime属性を含む部屋情報を抽出
             room_tabs = re.finditer(r'<li[^>]*?room-id="(\d+)"[^>]*?startTime="(\d+)"[^>]*?>', html_content)
             
@@ -84,20 +111,26 @@ class StudiolScraper(StudioScraperStrategy):
                 room_id = tab.group(1)
                 try:
                     start_time = int(tab.group(2))
-                    # startTime=60の場合は30分単位予約可能
+                    # startTime=60の場合は30に変換（30分単位予約可能フラグは保持）
                     allows_thirty_minute_slots = (start_time == 60)
+                    if start_time == 60:
+                        start_time = 30
                     
-                    if start_time not in [0, 30, 60]:
+                    if start_time not in [0, 30]:
                         logger.warning(f"無効な開始時刻を検出: room_id={room_id}, start_time={start_time}")
                         start_time = 0
                     
-                    self.start_minute_map[room_id] = start_time
-                    self.thirty_minute_slots_map[room_id] = allows_thirty_minute_slots
+                    room_name = self.room_name_map.get(room_id)
+                    if room_name:
+                        self.start_minute_map[room_name] = start_time
+                        self.thirty_minute_slots_map[room_name] = allows_thirty_minute_slots
                     
                 except (ValueError, TypeError) as e:
                     logger.warning(f"開始時刻の解析に失敗: room_id={room_id}, error={str(e)}")
-                    self.start_minute_map[room_id] = 0
-                    self.thirty_minute_slots_map[room_id] = False
+                    room_name = self.room_name_map.get(room_id)
+                    if room_name:
+                        self.start_minute_map[room_name] = 0
+                        self.thirty_minute_slots_map[room_name] = False
 
     def _extract_token(self, html_content: str) -> Optional[str]:
         """HTMLコンテンツからトークンを抽出"""
@@ -118,19 +151,21 @@ class StudiolScraper(StudioScraperStrategy):
         logger.info(f"予約可能時間の取得を開始: date={target_date}")
         schedule_data = self._fetch_raw_schedule_data(target_date)
         return self._parse_schedule_data(schedule_data, target_date)
-    
+
     def _fetch_raw_schedule_data(self, target_date: date) -> List[dict]:
-            """APIから生のスケジュールデータを取得"""
-            url = f"{self.BASE_URL}/get_schedule_shop"
-            headers, data = self._prepare_schedule_request(target_date)
+        """APIから生のスケジュールデータを取得"""
+        url = f"{self.BASE_URL}/get_schedule_shop"
+        headers, data = self._prepare_schedule_request(target_date)
+        
+        try:
+            response = self._make_request("POST", url, headers=headers, data=data)
+            if not response.text.strip():
+                raise StudioScraperError("スケジュールデータが空です")
             
-            try:
-                response = self._make_schedule_request(url, headers, data)
-                return self._parse_response(response)
-            except requests.RequestException as e:
-                raise StudioScraperError("スケジュールデータの取得に失敗しました") from e
-            except json.JSONDecodeError as e:
-                raise StudioScraperError("スケジュールデータのパースに失敗しました") from e
+            return response.json()
+            
+        except json.JSONDecodeError as e:
+            raise StudioScraperError("スケジュールデータのパースに失敗しました") from e
 
     def _prepare_schedule_request(self, target_date: date) -> tuple[dict, dict]:
         """スケジュールリクエストのヘッダーとデータを準備"""
@@ -152,19 +187,6 @@ class StudiolScraper(StudioScraperStrategy):
         logger.debug(f"リクエストデータを準備: date={date_str}")
         return headers, data
 
-    def _make_schedule_request(self, url: str, headers: dict, data: dict) -> requests.Response:
-        """スケジュールデータのリクエストを実行"""
-        response = self.session.post(url, headers=headers, data=data)
-        response.raise_for_status()
-        return response
-
-    def _parse_response(self, response: requests.Response) -> List[dict]:
-        """レスポンスをパースしてJSONデータを取得"""
-        if not response.text.strip():
-            raise StudioScraperError("スケジュールデータが空です")
-        
-        return response.json()
-
     def _parse_schedule_data(
         self,
         schedule_data: List[dict],
@@ -184,6 +206,7 @@ class StudiolScraper(StudioScraperStrategy):
         
         for entry in schedule_data:
             room_id = str(entry['roomId'])
+            # room_name_mapから実際の部屋名を取得
             room_name = self.room_name_map.get(room_id, f"Room {room_id}")
             start_dt = datetime.fromisoformat(entry['start'])
             
@@ -202,18 +225,17 @@ class StudiolScraper(StudioScraperStrategy):
         """スタジオごとの利用可能時間を作成"""
         studio_availabilities = []
         
-        for studio_name, time_slots in studio_time_slots.items():
+        for room_name, time_slots in studio_time_slots.items():
             merged_slots = self._merge_consecutive_slots(sorted(time_slots))
             studio_availabilities.append(
                 StudioAvailability(
-                    room_name=studio_name,
+                    room_name=room_name,
                     time_slots=merged_slots,
                     date=target_date,
-                    # 開始時刻（分）を設定
-                    start_minute=self.start_minute_map.get(studio_name, 0)
+                    start_minute=self.start_minute_map.get(room_name, 0)
                 )
             )
-            logger.debug(f"スタジオ {studio_name} の利用可能枠: {len(merged_slots)}個")
+            logger.debug(f"スタジオ {room_name} の利用可能枠: {len(merged_slots)}個")
         
         return studio_availabilities
 
