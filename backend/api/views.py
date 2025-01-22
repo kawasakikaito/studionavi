@@ -174,7 +174,7 @@ class StudioViewSet(viewsets.ModelViewSet):
                             'start': slot.start_time.strftime('%H:%M'),
                             'end': slot.end_time.strftime('%H:%M'),
                             'room_name': availability.room_name,
-                            'starts_at_thirty': availability.starts_at_thirty
+                            'start_minutes': availability.start_minutes,  # starts_at_thirtyの代わりにstart_minuteを使用
                         }
                         for availability in filtered_availabilities
                         for slot in availability.time_slots
