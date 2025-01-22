@@ -1,0 +1,189 @@
+[
+  {
+    "model": "api.studio",
+    "pk": 1,
+    "fields": {
+      "name": "PADstudio",
+      "address": "大阪府大阪市中央区西心斎橋2-17-8 PADビル",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://pad-studio.com",
+      "self_practice_reservation_start_date": 7,
+      "self_practice_reservation_start_time": "10:00:00",
+      "created_at": "2025-01-17T09:00:00+09:00",
+      "updated_at": "2025-01-17T09:00:00+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 2,
+    "fields": {
+      "name": "ベースオントップ アメ村店",
+      "address": "大阪府大阪市中央区西心斎橋2-9-38 アカイビル5F",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://studiol.jp/pc/studio/673",
+      "self_practice_reservation_start_date": 14,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-17T09:00:00+09:00",
+      "updated_at": "2025-01-17T09:00:00+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 3,
+    "fields": {
+      "name": "グリーンスタジオ",
+      "address": "大阪府大阪市中央区西心斎橋2-17-8",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://studiol.jp/pc/studio/546",
+      "self_practice_reservation_start_date": 14,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-17T09:00:00+09:00",
+      "updated_at": "2025-01-17T09:00:00+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 4,
+    "fields": {
+      "name": "ベースオントップ 梅田店",
+      "address": "大阪府大阪市北区芝田2-1-21 松永第2ビル4F",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://studiol.jp/pc/studio/671",
+      "self_practice_reservation_start_date": 14,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-17T09:00:00+09:00",
+      "updated_at": "2025-01-17T09:00:00+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 5,
+    "fields": {
+      "name": "ベースオントップ 心斎橋",
+      "address": "大阪府大阪市中央区心斎橋筋2-3-12 ダイヤモンドビル4F",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://studiol.jp/pc/studio/682",
+      "self_practice_reservation_start_date": 14,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-17T09:00:00+09:00",
+      "updated_at": "2025-01-17T09:00:00+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 6,
+    "fields": {
+      "name": "Studio246 OSAKA",
+      "address": "大阪府大阪市北区芝田2-8-33 芝田ビル2F",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://www.studio246.net/reserve/?si=08",
+      "self_practice_reservation_start_date": 30,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-22T08:43:39+09:00",
+      "updated_at": "2025-01-22T08:43:39+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 7,
+    "fields": {
+      "name": "Studio246 JUSO",
+      "address": "大阪府大阪市淀川区十三本町1-12-23 2F",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://www.studio246.net/reserve/?si=10",
+      "self_practice_reservation_start_date": 30,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-22T08:43:39+09:00",
+      "updated_at": "2025-01-22T08:43:39+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 8,
+    "fields": {
+      "name": "Studio246 NAMBA",
+      "address": "大阪府大阪市中央区難波3-5-17 北極星ビル3F",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://www.studio246.net/reserve/?si=09",
+      "self_practice_reservation_start_date": 30,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-22T08:43:39+09:00",
+      "updated_at": "2025-01-22T08:43:39+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 9,
+    "fields": {
+      "name": "Studio246 WEST",
+      "address": "兵庫県神戸市中央区三宮町1-8-1 さんプラザ3F",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://www.studio246.net/reserve/?si=11",
+      "self_practice_reservation_start_date": 30,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-22T08:43:39+09:00",
+      "updated_at": "2025-01-22T08:43:39+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 10,
+    "fields": {
+      "name": "Studio246 KYOTO",
+      "address": "京都府京都市下京区四条通り烏丸西入ル函谷鉾町79 ヤサカ四条烏丸ビル4F",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://www.studio246.net/reserve/?si=12",
+      "self_practice_reservation_start_date": 30,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-22T08:43:39+09:00",
+      "updated_at": "2025-01-22T08:43:39+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 11,
+    "fields": {
+      "name": "Studio246 NAGOYA",
+      "address": "愛知県名古屋市千種区東山通5-103 トーアビル2F",
+      "is_24h": false,
+      "opening_time": "10:00:00",
+      "closing_time": "23:00:00",
+      "closes_next_day": false,
+      "reservation_url": "https://www.studio246.net/reserve/?si=13",
+      "self_practice_reservation_start_date": 30,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-01-22T08:43:39+09:00",
+      "updated_at": "2025-01-22T08:43:39+09:00"
+    }
+  }
+]

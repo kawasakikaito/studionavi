@@ -36,7 +36,13 @@ class AvailableTimeRangeSerializer(serializers.Serializer):
     start = serializers.CharField()
     end = serializers.CharField()
     room_name = serializers.CharField()
-    starts_at_thirty = serializers.BooleanField()
+    start_minutes = serializers.ListField(
+        child=serializers.IntegerField(
+            min_value=0,
+            max_value=59
+        ),
+        help_text="予約開始可能な時刻（分）のリスト。例: [0, 30]"
+    )
 
 class StudioAvailabilityDataSerializer(serializers.Serializer):
     studio_id = serializers.CharField()

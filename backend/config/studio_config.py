@@ -55,5 +55,54 @@ STUDIO_CONFIGS: Dict[str, StudioConfig] = {
             scraper_type="studiol",
             shop_id="682",
         ),
-    )
+    ),
+    # Studio246の店舗を追加
+    "6": StudioConfig(
+        id=6,
+        name="Studio246 OSAKA",
+        scraper=ScraperConfig(
+            scraper_type="studio246",
+            shop_id="08",  # 大阪・梅田
+        ),
+    ),
+    "7": StudioConfig(
+        id=7,
+        name="Studio246 JUSO",
+        scraper=ScraperConfig(
+            scraper_type="studio246",
+            shop_id="10",  # 大阪・十三
+        ),
+    ),
+    "8": StudioConfig(
+        id=8,
+        name="Studio246 NAMBA",
+        scraper=ScraperConfig(
+            scraper_type="studio246",
+            shop_id="09",  # 大阪・なんば
+        ),
+    ),
+    "9": StudioConfig(
+        id=9,
+        name="Studio246 WEST",
+        scraper=ScraperConfig(
+            scraper_type="studio246",
+            shop_id="11",  # 神戸・三宮
+        ),
+    ),
+    "10": StudioConfig(
+        id=10,
+        name="Studio246 KYOTO",
+        scraper=ScraperConfig(
+            scraper_type="studio246",
+            shop_id="12",  # 京都・大宮
+        ),
+    ),
+    "11": StudioConfig(
+        id=11,
+        name="Studio246 NAGOYA",
+        scraper=ScraperConfig(
+            scraper_type="studio246",
+            shop_id="13",  # 名古屋・東山
+        ),
+    ),
 }
