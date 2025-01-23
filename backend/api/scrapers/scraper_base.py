@@ -6,7 +6,7 @@ import json
 import logging
 from pathlib import Path
 from bs4 import BeautifulSoup
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ValidationInfo
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -111,30 +111,35 @@ class StudioAvailability(BaseModel):
     room_name: str
     date: date
     time_slots: List[StudioTimeSlot]
+    valid_start_minutes: Set[int] = {0, 30}  # 有効な開始時刻（分）のセット
     start_minutes: List[int] = [0]  # 複数の開始時刻を保持
     allows_thirty_minute_slots: bool = False
 
     @field_validator('start_minutes')
     @classmethod
-    def validate_start_minutes(cls, v: List[int]) -> List[int]:
+    def validate_start_minutes(cls, v: List[int], info: ValidationInfo) -> List[int]:
         """開始時刻の妥当性チェック"""
-        valid_minutes = {0, 30}
+        # モデルインスタンスから有効な開始時刻を取得
+        # valid_start_minutesはstart_minutesより先に定義されているため、
+        # ValidationInfoから直接取得できる
+        valid_minutes = info.data.get('valid_start_minutes', {0, 30})
         invalid_minutes = set(v) - valid_minutes
         if invalid_minutes:
             raise StudioValidationError(
                 f"無効な開始時刻（分）が含まれています: {invalid_minutes}\n"
-                "開始時刻（分）は0または30である必要があります"
+                f"開始時刻（分）は{sorted(valid_minutes)}のいずれかである必要があります"
             )
         return sorted(list(set(v)))  # 重複を削除してソート
 
-    def to_dict(self) -> Dict[str, Union[str, List[Dict[str, str]], List[int], bool]]:
+    def to_dict(self) -> Dict[str, Union[str, List[Dict[str, str]], List[int], bool, Set[int]]]:
         """空き状況をJSON互換の辞書形式に変換"""
         return {
             "room_name": self.room_name,
             "date": self.date.isoformat(),
             "time_slots": [slot.to_dict() for slot in self.time_slots],
             "start_minutes": self.start_minutes,
-            "allows_thirty_minute_slots": self.allows_thirty_minute_slots
+            "allows_thirty_minute_slots": self.allows_thirty_minute_slots,
+            "valid_start_minutes": sorted(list(self.valid_start_minutes))
         }
 
 class StudioScraperStrategy(Protocol):
