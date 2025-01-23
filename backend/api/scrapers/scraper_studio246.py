@@ -19,11 +19,49 @@ from pydantic import field_validator
 
 logger = setup_logger(__name__)
 
-class Studio246Scraper(StudioScraperStrategy):
-    """Studio246の予約システムに対応するスクレイパー実装"""
+class Studio246ConnectionManager:
+    """Studio246の接続管理クラス"""
     
     BASE_URL = "https://www.studio246.net/reserve/"
     AJAX_URL = "https://www.studio246.net/reserve/ajax/ajax_timeline_contents.php"
+    
+    def __init__(self):
+        self._token: Optional[str] = None
+        self.shop_id: Optional[str] = None
+        
+    def establish_connection(self, shop_id: str) -> bool:
+        """接続を確立し、トークンを取得"""
+        try:
+            self._token = self._fetch_token(shop_id)
+            self.shop_id = shop_id
+            return True
+        except Exception as e:
+            raise StudioScraperError(f"接続の確立に失敗: {str(e)}") from e
+            
+    def _fetch_token(self, shop_id: str) -> str:
+        """PHPSESSIDトークンを取得"""
+        url = f"{self.BASE_URL}?si={shop_id}"
+        response = requests.get(url)
+        response.raise_for_status()
+        
+        # CookieからPHPSESSIDを取得
+        phpsessid = response.cookies.get('PHPSESSID')
+        if not phpsessid:
+            raise StudioScraperError("セッションIDの取得に失敗")
+            
+        return phpsessid
+        
+    def get_request_headers(self) -> Dict[str, str]:
+        """リクエストヘッダーを取得"""
+        return {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Cookie': f'PHPSESSID={self._token}'
+        }
+
+class Studio246Scraper(StudioScraperStrategy):
+    """Studio246の予約システムに対応するスクレイパー実装"""
+    
     MAX_RETRIES = 5
     MIN_WAIT = 3
     MAX_WAIT = 15
@@ -32,201 +70,92 @@ class Studio246Scraper(StudioScraperStrategy):
     def __init__(self):
         """初期化処理"""
         super().__init__()
-        self._token: Optional[str] = None
-        self.shop_id: Optional[str] = None
+        self.connection = Studio246ConnectionManager()
         self.room_name_map: Dict[str, str] = {}
-        self.start_minutes_map: Dict[str, List[int]] = {}  # 複数の開始時刻を管理
+        self.start_minutes_map: Dict[str, List[int]] = {}
         self.thirty_minute_slots_map: Dict[str, bool] = {}
 
     def establish_connection(self, shop_id: str) -> bool:
-        """予約システムへの接続を確立し、トークンを取得する"""
-        try:
-            token = self._fetch_token(shop_id)
-            self._set_connection_info(shop_id, token)
-            logger.info(f"接続を確立しました: shop_id={shop_id}")
-            return True
-            
-        except StudioScraperError:
-            raise
-        except Exception as e:
-            logger.error(f"接続の確立に失敗: {str(e)}")
-            raise StudioScraperError("接続の確立に失敗しました") from e
-
-    def _fetch_token(self, shop_id: str) -> str:
-        """ページからPHPSESSIDを取得"""
-        try:
-            url = f"{self.BASE_URL}?si={shop_id}"
-            logger.debug(f"セッション取得リクエストURL: {url}")
-            
-            # 初回リクエストでPHPSESSIDを取得
-            response = requests.get(url)
-            response.raise_for_status()
-            
-            # Cookieからセッションを取得
-            cookies = response.cookies
-            phpsessid = cookies.get('PHPSESSID')
-            
-            if not phpsessid:
-                # レスポンスヘッダーからも確認
-                cookie_header = response.headers.get('Set-Cookie', '')
-                match = re.search(r'PHPSESSID=([^;]+)', cookie_header)
-                if match:
-                    phpsessid = match.group(1)
-            
-            logger.debug(f"取得したPHPSESSID: {phpsessid}")
-            
-            if not phpsessid:
-                raise StudioScraperError("セッションIDの取得に失敗しました")
-                
-            return phpsessid
-            
-        except requests.RequestException as e:
-            logger.error(f"セッション取得リクエストに失敗: {str(e)}")
-            raise StudioScraperError("セッション取得リクエストに失敗しました") from e
-
-    def _set_connection_info(self, shop_id: str, token: str) -> None:
-        """接続情報を設定"""
-        self.shop_id = shop_id
-        self._token = token
+        """予約システムへの接続を確立"""
+        return self.connection.establish_connection(shop_id)
 
     def fetch_available_times(self, target_date: date) -> List[StudioAvailability]:
         """指定された日付の予約可能時間を取得"""
-        try:
-            schedule_data = self._fetch_raw_schedule_data(target_date)
-            studio_time_slots = self._group_time_slots_by_studio(schedule_data)
-            return self._create_studio_availabilities(studio_time_slots, target_date)
-            
-        except StudioScraperError:
-            raise
-        except Exception as e:
-            logger.error(f"予約可能時間の取得に失敗: {str(e)}")
-            raise StudioScraperError("予約可能時間の取得に失敗しました") from e
-
-    def _fetch_raw_schedule_data(self, target_date: date) -> List[dict]:
-        """APIから生のスケジュールデータを取得"""
-        try:
-            headers, data = self._prepare_schedule_request(target_date)
-            logger.debug(f"スケジュールリクエストヘッダー: {headers}")
-            logger.debug(f"スケジュールリクエストデータ: {data}")
-            
-            response = requests.post(self.AJAX_URL, headers=headers, data=data)
-            logger.debug(f"スケジュールレスポンスステータス: {response.status_code}")
-            logger.debug(f"スケジュールレスポンスヘッダー: {response.headers}")
-            logger.debug(f"スケジュールレスポンス本文: {response.text[:50000]}")  # 最初の500文字のみ表示
-            
-            response.raise_for_status()
-            
-            # HTMLレスポンスをパース
-            schedule_data = self._parse_schedule_html(response.text, target_date)
-            if not schedule_data:
-                logger.warning("スケジュールデータが空です")
-                return []
-                
-            return schedule_data
-            
-        except requests.RequestException as e:
-            logger.error(f"スケジュールデータの取得に失敗: {str(e)}")
-            raise StudioScraperError("スケジュールデータの取得に失敗しました") from e
-        except Exception as e:
-            logger.error(f"スケジュールデータの解析に失敗: {str(e)}")
-            raise StudioScraperError("スケジュールデータの解析に失敗しました") from e
+        schedule_data = self._fetch_schedule_data(target_date)
+        time_slots = self._parse_schedule_data(schedule_data, target_date)
+        return self._create_availabilities(time_slots, target_date)
+        
+    def _fetch_schedule_data(self, target_date: date) -> List[dict]:
+        """スケジュールデータを取得"""
+        headers = self.connection.get_request_headers()
+        data = {
+            'si': self.connection.shop_id,
+            'date': target_date.strftime('%Y-%m-%d')
+        }
+        
+        response = requests.post(
+            self.connection.AJAX_URL,
+            headers=headers,
+            data=data
+        )
+        response.raise_for_status()
+        
+        return self._parse_schedule_html(response.text, target_date)
 
     def _parse_schedule_html(self, html_content: str, target_date: date) -> List[dict]:
-        """HTMLレスポンスからスケジュール情報を抽出"""
-        schedule_data = []
+        """HTMLからスケジュールデータを抽出"""
         soup = BeautifulSoup(html_content, 'html.parser')
-        
-        # タイムラインブロックを取得
         timeline_blocks = soup.find_all('div', class_='timeline_block')
-        if not timeline_blocks:
-            logger.warning("タイムラインブロックが見つかりません")
-            return []
         
-        # 指定された日付のタイムラインブロックを探す
-        target_block = None
         for block in timeline_blocks:
             block_date_str = block.get('data-date')
-            if not block_date_str:
-                continue
+            if block_date_str and datetime.strptime(block_date_str, '%Y-%m-%d').date() == target_date:
+                return self._extract_available_slots(block)
                 
-            try:
-                block_date = datetime.strptime(block_date_str, '%Y-%m-%d').date()
-                if block_date == target_date:
-                    target_block = block
-                    break
-            except ValueError:
-                logger.warning(f"不正な日付形式: {block_date_str}")
-                continue
-        
-        if not target_block:
-            logger.warning(f"対象日付 {target_date} のタイムラインブロックが見つかりません")
-            return []
-            
-        logger.debug(f"タイムラインブロックの日付: {target_date}")
-        
-        # テーブル内の予約可能な時間枠を処理
-        time_cells = target_block.find_all('td')
-        logger.debug(f"見つかったセルの総数: {len(time_cells)}")
-        
-        for cell in time_cells:
-            try:
-                # 予約可能な時間枠の条件をチェック
-                cell_classes = cell.get('class', [])
-                cell_state = cell.get('state')
-                
-                if not (
-                    'time_cell' in cell_classes and  # time_cellクラスを持っている
-                    'bg_black' not in cell_classes and  # bg_blackクラスを持っていない
-                    cell_state == 'posi'  # stateがposi
-                ):
-                    continue
+        return []
 
-                # 時刻を取得
+    def _extract_available_slots(self, timeline_block: BeautifulSoup) -> List[dict]:
+        """利用可能な時間枠を抽出"""
+        slots = []
+        
+        for cell in timeline_block.find_all('td'):
+            if self._is_available_cell(cell):
                 time_str = cell.get('data-time')
-                if not time_str:
-                    continue
-
-                logger.debug(f"予約可能な時間枠を検出: {time_str}, クラス: {cell_classes}, 状態: {cell_state}")
-
-                try:
-                    # 時刻のパース
-                    hour = int(time_str.split(':')[0])
-                    minute = int(time_str.split(':')[1])
-
-                    # 24:00以降の時間は次の日の予約として扱う
-                    slot_date = target_date
-                    if hour >= 24:
-                        hour -= 24
-                        slot_date += timedelta(days=1)
-                        logger.debug(f"24時以降の時間枠を検出: {time_str} -> {hour:02d}:{minute:02d} (翌日の予約)")
-
-                    # 時刻を標準形式に変換
-                    time_str = f"{hour:02d}:{minute:02d}"
-                    start_time = datetime.combine(
-                        slot_date,
-                        datetime.strptime(time_str, '%H:%M').time()
-                    )
-
-                    schedule_item = {
-                        'studio_id': '1',  # スタジオIDは固定値として設定
-                        'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S'),
+                if time_str:
+                    slots.append({
+                        'studio_id': '1',
+                        'start_time': time_str,
                         'is_available': True
-                    }
-                    schedule_data.append(schedule_item)
-                    logger.debug(f"予約可能時間を追加: {schedule_item}")
+                    })
+                    
+        return slots
 
-                except ValueError as e:
-                    logger.error(f"時刻のパースに失敗: {time_str}, エラー: {str(e)}")
-                    continue
+    def _is_available_cell(self, cell) -> bool:
+        """セルが予約可能か判定"""
+        cell_classes = cell.get('class', [])
+        cell_state = cell.get('state')
+        
+        return (
+            'time_cell' in cell_classes and
+            'bg_black' not in cell_classes and
+            cell_state == 'posi'
+        )
 
-            except Exception as e:
-                logger.error(f"時間枠の解析に失敗: {str(e)}")
-                continue
-
-        logger.debug(f"パースされたスケジュールデータ: {len(schedule_data)}件")
-        if not schedule_data:
-            logger.warning(f"予約可能な時間枠が見つかりませんでした（対象日: {target_date}）")
-        return schedule_data
+    def _parse_time_slot(self, time_str: str, target_date: date) -> datetime:
+        """時刻文字列をdatetimeに変換"""
+        hour = int(time_str.split(':')[0])
+        minute = int(time_str.split(':')[1])
+        
+        # 24:00以降の時間は次の日の予約として扱う
+        slot_date = target_date
+        if hour >= 24:
+            hour -= 24
+            slot_date += timedelta(days=1)
+            
+        return datetime.combine(
+            slot_date,
+            time(hour, minute)
+        )
 
     def _prepare_schedule_request(self, target_date: date) -> tuple:
         """スケジュールリクエストのヘッダーとデータを準備"""
@@ -243,148 +172,141 @@ class Studio246Scraper(StudioScraperStrategy):
         
         return headers, data
 
-    def _group_time_slots_by_studio(self, schedule_data: List[dict]) -> Dict[str, List[datetime]]:
-        """スタジオごとに時間枠をグループ化"""
-        studio_time_slots: Dict[str, List[datetime]] = {}
+    def _parse_schedule_data(self, schedule_data: List[dict], target_date: date) -> Dict[str, List[datetime]]:
+        """
+        スケジュールデータを解析し、時間枠を整理
         
-        for item in schedule_data:
-            studio_id = str(item.get('studio_id', ''))
-            start_time_str = item.get('start_time', '')
-            is_available = item.get('is_available', False)
+        Args:
+            schedule_data: スケジュールデータのリスト
+            target_date: 対象日付
             
-            if not all([studio_id, start_time_str, is_available]):
-                continue
-                
+        Returns:
+            スタジオIDをキー、時間枠リストを値とする辞書
+            
+        Raises:
+            StudioScraperError: データ解析に失敗した場合
+        """
+        time_slots: Dict[str, List[datetime]] = {}
+        
+        if not schedule_data:
+            logger.debug("スケジュールデータが空です")
+            return time_slots
+            
+        logger.info(f"スケジュールデータの解析を開始: 件数={len(schedule_data)}")
+        
+        for idx, item in enumerate(schedule_data):
             try:
-                # 時間枠を独立して扱う
-                start_time = datetime.strptime(start_time_str, '%Y-%m-%d %H:%M:%S')
+                # 時間枠データを解析
+                start_time = self._parse_time_slot(item['start_time'], target_date)
                 minute = start_time.minute
                 
                 # 開始時刻（分）に基づいてスタジオIDを設定
                 studio_id = str(minute)  # 0, 15, 30, 45分の部屋に対応
                 
-                if studio_id not in studio_time_slots:
-                    studio_time_slots[studio_id] = []
-                studio_time_slots[studio_id].append(start_time)
-                logger.debug(f"時間枠を追加: studio_id={studio_id}, start_time={start_time}")
+                if studio_id not in time_slots:
+                    time_slots[studio_id] = []
+                time_slots[studio_id].append(start_time)
                 
-            except ValueError as e:
-                logger.error(f"日時のパースに失敗: {str(e)}")
+                logger.debug(f"時間枠を追加: index={idx}, studio_id={studio_id}, start_time={start_time}")
+                
+            except (KeyError, ValueError) as e:
+                logger.warning(f"無効な時間枠データをスキップ: index={idx}, item={item}, エラー: {str(e)}")
                 continue
                 
-        return studio_time_slots
+        logger.info(f"スケジュールデータの解析が完了: 有効な時間枠数={sum(len(v) for v in time_slots.values())}")
+        return time_slots
 
-    def _create_studio_availabilities(
-        self,
-        studio_time_slots: Dict[str, List[datetime]],
-        target_date: date
-    ) -> List[StudioAvailability]:
-        """スタジオごとの利用可能時間を作成"""
-        availabilities = []
+    def _create_availabilities(self, time_slots: Dict[str, List[datetime]], target_date: date) -> List[StudioAvailability]:
+        """
+        利用可能時間リストを作成
         
-        # 開始時刻（分）ごとの時間枠を格納
-        slots_by_minute = {
-            0: [],   # 00分スタート
-            15: [],  # 15分スタート
-            30: [],  # 30分スタート
-            45: []   # 45分スタート
-        }
+        Args:
+            time_slots: スタジオIDをキー、時間枠リストを値とする辞書
+            target_date: 対象日付
+            
+        Returns:
+            利用可能時間のリスト
+            
+        Raises:
+            StudioScraperError: 利用可能時間の作成に失敗した場合
+        """
+        availabilities: List[StudioAvailability] = []
         
-        for studio_id, time_slots in studio_time_slots.items():
-            if not time_slots:
-                continue
-                
-            # 時間枠を開始時刻（分）ごとに分類
-            for dt in time_slots:
-                minute = dt.minute
-                if minute in slots_by_minute:
-                    slots_by_minute[minute].append(dt)
+        if not time_slots:
+            logger.warning("利用可能な時間枠がありません")
+            return availabilities
+            
+        logger.info(f"利用可能時間の作成を開始: スタジオ数={len(time_slots)}")
         
-        # 各開始時刻（分）ごとに利用可能時間を作成
-        for minute, slots in slots_by_minute.items():
+        for studio_id, slots in time_slots.items():
             if not slots:
+                logger.debug(f"空の時間枠をスキップ: studio_id={studio_id}")
                 continue
                 
-            # 時間枠をソート
-            sorted_slots = sorted(set(slots))  # 重複を排除
-            time_slot_objects = []
-            
-            # 各時間枠を独立して処理
-            for slot in sorted_slots:
-                # 1時間の時間枠を作成
-                end_time = slot + timedelta(hours=1)
+            try:
+                # 時間枠オブジェクトを作成
+                time_slot_objects = [
+                    StudioTimeSlot(
+                        start_time=time(slot.hour, slot.minute),
+                        end_time=time((slot.hour + 1) % 24, slot.minute)
+                    )
+                    for slot in sorted(set(slots))  # 重複排除とソート
+                ]
                 
-                # datetimeからtimeオブジェクトを作成
-                start_time_obj = time(slot.hour, slot.minute)
-                end_time_obj = time(end_time.hour % 24, end_time.minute)
-                
-                time_slot = StudioTimeSlot(
-                    start_time=start_time_obj,
-                    end_time=end_time_obj
-                )
-                time_slot_objects.append(time_slot)
-            
-            # 時間枠が見つかった場合のみ、利用可能時間を作成
-            if time_slot_objects:
-                room_name = f"Room {minute}"  # 部屋名は仮の値
+                # 利用可能時間を作成
+                minute = int(studio_id)
                 availability = StudioAvailability(
-                    room_name=room_name,
+                    room_name=f"Room {minute}",
                     date=target_date,
                     time_slots=time_slot_objects,
-                    start_minutes=[minute],  # その開始時刻のみを許可
-                    allows_thirty_minute_slots=False,  # Studio246は30分枠を許可しない
-                    valid_start_minutes={0, 15, 30, 45}  # 各部屋の開始時刻に対応
+                    start_minutes=[minute],
+                    allows_thirty_minute_slots=False,
+                    valid_start_minutes={0, 15, 30, 45}
                 )
                 availabilities.append(availability)
                 
+                logger.debug(f"利用可能時間を作成: studio_id={studio_id}, 時間枠数={len(time_slot_objects)}")
+                
+            except Exception as e:
+                error_msg = f"利用可能時間の作成に失敗: studio_id={studio_id}, エラー: {str(e)}"
+                logger.error(error_msg)
+                raise StudioScraperError(error_msg) from e
+                
+        logger.info(f"利用可能時間の作成が完了: 件数={len(availabilities)}")
         return availabilities
 
-    def _merge_consecutive_slots(self, time_slots: List[datetime]) -> List[Tuple[datetime, datetime]]:
-        """連続する時間枠をマージ"""
-        if not time_slots:
-            return []
+    def _parse_time_slot(self, time_str: str, target_date: date) -> datetime:
+        """
+        時刻文字列をdatetimeに変換
+        
+        Args:
+            time_str: 時刻文字列 (HH:MM形式)
+            target_date: 対象日付
             
-        # 時間枠をソート
-        sorted_slots = sorted(time_slots)
-        merged = []
-        current_start = sorted_slots[0]
-        current_end = current_start + timedelta(hours=1)
-        
-        for slot in sorted_slots[1:]:
-            # 次の時間枠の開始時刻
-            next_start = slot
-            next_end = slot + timedelta(hours=1)
+        Returns:
+            変換されたdatetimeオブジェクト
             
-            # 現在の時間枠と次の時間枠が連続している場合
-            if next_start == current_end:
-                # 時間枠をマージ
-                current_end = next_end
-            else:
-                # 連続していない場合は新しい時間枠を追加
-                merged.append((current_start, current_end))
-                current_start = next_start
-                current_end = next_end
-        
-        # 最後の時間枠を追加
-        merged.append((current_start, current_end))
-        return merged
-
-    def _create_time_slot(self, start: datetime, end: datetime) -> Optional[StudioTimeSlot]:
-        """時間枠オブジェクトを作成"""
-        if not start or not end:
-            return None
+        Raises:
+            ValueError: 時刻文字列の形式が不正な場合
+            StudioScraperError: 時刻の変換に失敗した場合
+        """
+        try:
+            hour, minute = map(int, time_str.split(':'))
             
-        # 終了時刻を1時間後に設定
-        end = start + timedelta(hours=1)
-        
-        # datetimeからtimeオブジェクトを作成
-        start_time = time(start.hour, start.minute)
-        end_time = time(end.hour % 24, end.minute)
-        
-        return StudioTimeSlot(
-            start_time=start_time,
-            end_time=end_time
-        )
+            # 24:00以降の時間は次の日の予約として扱う
+            slot_date = target_date
+            if hour >= 24:
+                hour -= 24
+                slot_date += timedelta(days=1)
+                
+            result = datetime.combine(slot_date, time(hour, minute))
+            logger.debug(f"時刻を変換: time_str={time_str} -> datetime={result}")
+            return result
+            
+        except (ValueError, IndexError) as e:
+            error_msg = f"時刻のパースに失敗: time_str={time_str}, エラー: {str(e)}"
+            logger.error(error_msg)
+            raise StudioScraperError(error_msg) from e
 
 def register(registry: ScraperRegistry) -> None:
     """Studio246スクレイパーの登録"""
