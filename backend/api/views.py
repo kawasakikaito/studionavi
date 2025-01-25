@@ -139,9 +139,14 @@ class StudioViewSet(viewsets.ModelViewSet):
                 raise ValidationError('必須パラメータが不足しています')
 
             target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            duration_hours = int(duration)
+
+            # 24:00の特別処理
+            if end_time == "24:00":
+                end_time = "23:59"  # 一時的に23:59として処理
+
             start_time = datetime.strptime(start_time, '%H:%M').time()
             end_time = datetime.strptime(end_time, '%H:%M').time()
-            duration_hours = int(duration)
 
         except ValueError as e:
             raise ValidationError(f'パラメータが不正です: {str(e)}')
@@ -150,34 +155,33 @@ class StudioViewSet(viewsets.ModelViewSet):
             # スタジオの空き状況を取得
             availabilities = self.availability_service.get_availability(
                 studio_id=scraper_config.scraper_type,
-                target_date=target_date,
-                shop_id=scraper_config.shop_id
+                shop_id=scraper_config.shop_id,
+                target_date=target_date
             )
 
-            # 条件に合う時間枠を検索
+            # 空き状況チェッカーを初期化
             checker = AvailabilityChecker(availabilities)
-            time_range = TimeRange(start_time, end_time)
-            filtered_availabilities = checker.find_available_slots(
-                time_range,
-                duration_hours
-            )
-
-            # レスポンスデータの構築
+            time_range = TimeRange(start=start_time, end=end_time)
+            
+            # 利用可能な時間枠を検索
+            available_slots = checker.find_available_slots(time_range, duration_hours)
+            
+            # レスポンスの生成
             response_data = {
                 'status': 'success',
                 'data': {
                     'studio_id': str(studio.id),
                     'studio_name': studio.name,
-                    'date': date_str,
+                    'date': target_date.isoformat(),
                     'available_ranges': [
                         {
-                            'start': slot.start_time.strftime('%H:%M'),
-                            'end': slot.end_time.strftime('%H:%M'),
+                            'start': time_slot.start_time.strftime('%H:%M'),
+                            'end': '24:00' if time_slot.end_time.strftime('%H:%M') == '23:59' else time_slot.end_time.strftime('%H:%M'),
                             'room_name': availability.room_name,
-                            'start_minutes': availability.start_minutes,  # starts_at_thirtyの代わりにstart_minuteを使用
+                            'start_minutes': availability.start_minutes
                         }
-                        for availability in filtered_availabilities
-                        for slot in availability.time_slots
+                        for availability in available_slots
+                        for time_slot in availability.time_slots
                     ],
                     'meta': {
                         'timezone': 'Asia/Tokyo'
