@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import debounce from "lodash/debounce";
+import { searchStudios } from "@/lib/apiClient";
 
 interface Studio {
   id: number;
@@ -41,17 +41,7 @@ export function StudioSearchComponent({
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/studios/search/?q=${encodeURIComponent(
-          query
-        )}`
-      );
-
-      if (!response.ok) {
-        throw new Error("検索中にエラーが発生しました");
-      }
-
-      const data = await response.json();
+      const data = await searchStudios(query);
       // 選択済みスタジオを除外
       const filteredResults = data.filter(
         (studio: Studio) =>

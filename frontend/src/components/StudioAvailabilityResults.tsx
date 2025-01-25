@@ -93,6 +93,8 @@ const FETCH_DELAY = 200; // バッチ間の待機時間（ミリ秒）
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+import apiClient from "@/lib/apiClient";
+
 const fetchStudioAvailability = async (
   studioId: number,
   date: string,
@@ -100,38 +102,32 @@ const fetchStudioAvailability = async (
   end: string,
   duration: number
 ): Promise<StudioAvailability> => {
-  const params = new URLSearchParams({
-    date,
-    start,
-    end,
-    duration: duration.toString(),
-  });
-
   try {
-    const response = await fetch(
-      `http://127.0.0.1:8000/api/studios/${studioId}/availability?${params}`
+    const response = await apiClient.get<ApiSuccessResponse>(
+      `/studios/${studioId}/availability`,
+      {
+        params: {
+          date,
+          start,
+          end,
+          duration: duration.toString(),
+        },
+      }
     );
 
-    const data: ApiResponse = await response.json();
-
-    if (!response.ok || data.status === "error") {
-      const errorData = data as ApiErrorResponse;
+    return {
+      studioId: parseInt(response.data.data.studioId),
+      studioName: response.data.data.studioName,
+      availableRanges: response.data.data.availableRanges,
+    };
+  } catch (error: any) {
+    if (error.response?.data?.status === "error") {
+      const errorData = error.response.data as ApiErrorResponse;
       throw new ApiError(
         errorData.error.message,
         errorData.error.code,
         errorData.error.details
       );
-    }
-
-    const successData = data as ApiSuccessResponse;
-    return {
-      studioId: parseInt(successData.data.studioId),
-      studioName: successData.data.studioName,
-      availableRanges: successData.data.availableRanges,
-    };
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
     }
     throw new Error("空き状況の取得に失敗しました");
   }
