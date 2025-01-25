@@ -93,6 +93,7 @@ const FETCH_DELAY = 200; // バッチ間の待機時間（ミリ秒）
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+import axios, { isAxiosError } from "axios";
 import apiClient from "@/lib/apiClient";
 
 const fetchStudioAvailability = async (
@@ -120,16 +121,29 @@ const fetchStudioAvailability = async (
       studioName: response.data.data.studioName,
       availableRanges: response.data.data.availableRanges,
     };
-  } catch (error: any) {
-    if (error.response?.data?.status === "error") {
-      const errorData = error.response.data as ApiErrorResponse;
+  } catch (error: unknown) {
+    if (isAxiosError(error)) {
+      if (error.response?.data?.status === "error") {
+        const errorData = error.response.data as ApiErrorResponse;
+        throw new ApiError(
+          errorData.error.message,
+          errorData.error.code,
+          errorData.error.details
+        );
+      }
       throw new ApiError(
-        errorData.error.message,
-        errorData.error.code,
-        errorData.error.details
+        error.message || "APIリクエストに失敗しました",
+        error.code || "API_ERROR",
+        {
+          status: error.response?.status,
+          url: error.config?.url,
+        }
       );
     }
-    throw new Error("空き状況の取得に失敗しました");
+    if (error instanceof Error) {
+      throw new ApiError(error.message, "UNKNOWN_ERROR");
+    }
+    throw new ApiError("予期せぬエラーが発生しました", "UNKNOWN_ERROR");
   }
 };
 
@@ -261,12 +275,62 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="text-sm text-muted-foreground">
-            空き状況を確認中... {Math.round(progress)}%
-          </p>
+      <div className="space-y-6 animate-pulse">
+        {/* Date and Time Skeleton */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="h-4 bg-gray-200 rounded w-24"></div>
+          <div className="h-4 bg-gray-200 rounded w-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-32"></div>
+          <div className="h-4 bg-gray-200 rounded w-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-20"></div>
+        </div>
+
+        {/* Studio Cards Skeleton */}
+        <div className="grid grid-cols-1 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="rounded-lg border bg-white shadow-sm">
+              <div className="p-6 space-y-4">
+                {/* Header Skeleton */}
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <div className="h-6 bg-gray-200 rounded w-48"></div>
+                    <div className="space-y-1">
+                      <div className="h-4 bg-gray-200 rounded w-64"></div>
+                      <div className="h-4 bg-gray-200 rounded w-56"></div>
+                    </div>
+                  </div>
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                </div>
+
+                {/* Time Slots Skeleton */}
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-32"></div>
+                  <div className="flex flex-wrap gap-2">
+                    {[...Array(4)].map((_, j) => (
+                      <div
+                        key={j}
+                        className="h-6 bg-gray-200 rounded w-20"
+                      ></div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Buttons Skeleton */}
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress Bar */}
+        <div className="fixed bottom-0 left-0 right-0 h-1 bg-gray-200">
+          <div
+            className="h-full bg-blue-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          ></div>
         </div>
       </div>
     );
@@ -288,9 +352,60 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
 
       {errors.size > 0 && (
         <div className="rounded-md bg-yellow-50 p-4 mb-4">
-          <p className="text-sm text-yellow-700">
-            一部のスタジオで取得に失敗しました。再度お試しください。
-          </p>
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-yellow-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-yellow-800">
+                一部のスタジオで情報取得に失敗しました
+              </h3>
+              <div className="mt-2 text-sm text-yellow-700">
+                <p>
+                  以下のスタジオでエラーが発生しました。再度お試しいただくか、別の方法で予約をお願いします。
+                </p>
+                <ul className="mt-2 space-y-1 list-disc list-inside">
+                  {Array.from(errors.entries()).map(([studioId, message]) => {
+                    const studio = studios.find((s) => s.id === studioId);
+                    return (
+                      <li key={studioId}>
+                        {studio?.name || "不明なスタジオ"}: {message}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+              <div className="mt-4">
+                <div className="-mx-2 -my-1.5 flex">
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="rounded-md bg-yellow-50 px-2 py-1.5 text-sm font-medium text-yellow-800 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 focus:ring-offset-yellow-50"
+                  >
+                    ページをリロード
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onReset}
+                    className="ml-3 rounded-md bg-yellow-50 px-2 py-1.5 text-sm font-medium text-yellow-800 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 focus:ring-offset-yellow-50"
+                  >
+                    新しく検索
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
