@@ -103,8 +103,21 @@ class StudioTimeSlot(BaseModel):
         """時間枠をJSON互換の辞書形式に変換"""
         return {
             "start": self.start_time.strftime("%H:%M"),
-            "end": self.end_time.strftime("%H:%M")
+            "end": "24:00" if self.end_time.strftime("%H:%M") == "23:59" else self.end_time.strftime("%H:%M")
         }
+
+    def model_dump(self, *args, **kwargs) -> dict:
+        """JSON互換の辞書形式に変換"""
+        data = super().model_dump(*args, **kwargs)
+        
+        # 23:59を24:00として出力
+        if data['end_time'].strftime('%H:%M') == '23:59':
+            data['end_time'] = '24:00'
+        else:
+            data['end_time'] = data['end_time'].strftime('%H:%M')
+            
+        data['start_time'] = data['start_time'].strftime('%H:%M')
+        return data
 
 class StudioAvailability(BaseModel):
     """スタジオの空き状況を表すモデル"""
@@ -134,12 +147,12 @@ class StudioAvailability(BaseModel):
     def to_dict(self) -> Dict[str, Union[str, List[Dict[str, str]], List[int], bool, Set[int]]]:
         """空き状況をJSON互換の辞書形式に変換"""
         return {
-            "room_name": self.room_name,
+            "roomName": self.room_name,
             "date": self.date.isoformat(),
-            "time_slots": [slot.to_dict() for slot in self.time_slots],
-            "start_minutes": self.start_minutes,
-            "allows_thirty_minute_slots": self.allows_thirty_minute_slots,
-            "valid_start_minutes": sorted(list(self.valid_start_minutes))
+            "timeSlots": [slot.to_dict() for slot in self.time_slots],
+            "startMinutes": self.start_minutes,
+            "allowsThirtyMinuteSlots": self.allows_thirty_minute_slots,
+            "validStartMinutes": sorted(list(self.valid_start_minutes))
         }
 
 class StudioScraperStrategy(Protocol):
