@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Globe, Phone, MapPin, Clock } from "lucide-react";
+import StudioCard from "./StudioCard";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import _ from "lodash";
 
-interface Studio {
+export interface Studio {
   id: number;
   name: string;
   address: string;
@@ -15,14 +12,14 @@ interface Studio {
   selfBookingStart: string;
 }
 
-interface AvailableTimeSlot {
+export interface AvailableTimeSlot {
   start: string;
   end: string;
   roomName: string;
   startsAtThirty: boolean;
 }
 
-interface ApiErrorResponse {
+export interface ApiErrorResponse {
   status: "error";
   error: {
     code: string;
@@ -31,7 +28,7 @@ interface ApiErrorResponse {
   };
 }
 
-interface ApiSuccessResponse {
+export interface ApiSuccessResponse {
   status: "success";
   data: {
     studioId: string;
@@ -44,15 +41,15 @@ interface ApiSuccessResponse {
   };
 }
 
-type ApiResponse = ApiSuccessResponse | ApiErrorResponse;
+export type ApiResponse = ApiSuccessResponse | ApiErrorResponse;
 
-interface StudioAvailability {
+export interface StudioAvailability {
   studioId: number;
   studioName: string;
   availableRanges: AvailableTimeSlot[];
 }
 
-interface StudioAvailabilityResultsProps {
+export interface StudioAvailabilityResultsProps {
   studios: Studio[];
   selectedDate: Date;
   searchStartTime: string;
@@ -61,23 +58,22 @@ interface StudioAvailabilityResultsProps {
   onReset: () => void;
 }
 
-interface GroupedAvailability {
-  roomName: string;
-  timeRanges: string[];
-}
-
-interface FetchError {
+export interface FetchError {
   message: string;
   code: string;
   details?: Record<string, unknown>;
 }
 
-interface FetchResult {
+export interface FetchResult {
   data: StudioAvailability;
-  error?: FetchError;
+  error?: {
+    message: string;
+    code: string;
+    details?: Record<string, unknown>;
+  };
 }
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     message: string,
     public code: string,
@@ -197,21 +193,6 @@ const processBatch = async (
   await Promise.all(promises);
 };
 
-const formatTimeRanges = (
-  ranges: AvailableTimeSlot[]
-): GroupedAvailability[] => {
-  const groupedByRoom = _.groupBy(ranges, "roomName");
-
-  return Object.entries(groupedByRoom).map(([roomName, slots]) => {
-    const timeRanges = slots.map((slot) => `${slot.start}〜${slot.end}`);
-
-    return {
-      roomName: roomName || "指定なし",
-      timeRanges,
-    };
-  });
-};
-
 const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
   studios,
   selectedDate,
@@ -251,7 +232,7 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
             if (result.data) {
               setAvailabilityData((prev) => [...prev, result.data]);
               // エラーが存在する場合のみエラーを設定
-              if (typeof result.error?.message === 'string') {
+              if (typeof result.error?.message === "string") {
                 setErrors((prev) => {
                   const newErrors = new Map(prev);
                   newErrors.set(result.data.studioId, result.error!.message);
@@ -289,33 +270,22 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
         {/* Studio Cards Skeleton */}
         <div className="grid grid-cols-1 gap-4 sm:gap-6">
           {studios.map((studio) => (
-            <Card key={studio.id} className="overflow-hidden">
-              <CardContent className="p-4 sm:p-6">
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-semibold">{studio.name}</h3>
-                      <div className="mt-1 sm:mt-2 space-y-1">
-                        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                          <span>{studio.address}</span>
-                        </div>
-                        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                          <span>{studio.hours}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Buttons Skeleton */}
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-4">
-                    <div className="h-10 bg-gray-200 rounded"></div>
-                    <div className="h-10 bg-gray-200 rounded"></div>
-                  </div>
+            <div
+              key={studio.id}
+              className="bg-gray-100 rounded-lg p-4 animate-pulse"
+            >
+              <div className="space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <div className="h-8 bg-gray-200 rounded"></div>
+                  <div className="h-8 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
@@ -409,105 +379,22 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
             (a) => a.studioId === studio.id
           );
           const availableRanges = studioAvailability?.availableRanges || [];
-          const groupedAvailabilities = formatTimeRanges(availableRanges);
           const hasError = errors.has(studio.id);
 
           return (
-            <Card key={studio.id} className="overflow-hidden">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-semibold">{studio.name}</h3>
-                      <div className="mt-2 sm:mt-3 space-y-1.5 sm:space-y-2">
-                        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                          <span>{studio.address}</span>
-                        </div>
-                        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                          <span>{studio.hours}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <Badge
-                      variant={
-                        hasError
-                          ? "outline"
-                          : availableRanges.length > 0
-                          ? "secondary"
-                          : "destructive"
-                      }
-                      className={
-                        hasError
-                          ? "border-yellow-500 text-yellow-700"
-                          : availableRanges.length > 0
-                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                          : ""
-                      }
-                    >
-                      {hasError
-                        ? "取得失敗"
-                        : availableRanges.length > 0
-                        ? "空きあり"
-                        : "満室"}
-                    </Badge>
-                  </div>
-
-                  {hasError && (
-                    <p className="text-sm text-yellow-600">
-                      {errors.get(studio.id)}
-                    </p>
-                  )}
-
-                  {groupedAvailabilities.length > 0 && (
-                    <div className="space-y-3 sm:space-y-4">
-                      <p className="text-sm sm:text-base font-medium">予約可能な時間帯</p>
-                      <div className="space-y-2 sm:space-y-3">
-                        {groupedAvailabilities.map((group, roomIdx) => (
-                          <div key={roomIdx} className="space-y-1.5 sm:space-y-2">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                              {group.roomName}:
-                            </p>
-                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                              {group.timeRanges.map((timeRange, timeIdx) => (
-                                <Badge
-                                  key={timeIdx}
-                                  variant="outline"
-                                  className="text-[10px] sm:text-xs px-2 py-1"
-                                >
-                                  {timeRange}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-4">
-                    <Button
-                      className="w-full flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2"
-                      variant={
-                        availableRanges.length > 0 ? "gradient" : "secondary"
-                      }
-                      disabled={availableRanges.length === 0 || hasError}
-                    >
-                      <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      <span className="text-xs sm:text-sm">Web予約</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2"
-                    >
-                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      <span className="text-xs sm:text-sm">電話予約</span>
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StudioCard
+              key={studio.id}
+              studio={studio}
+              availableRanges={availableRanges}
+              hasError={hasError}
+              errorMessage={errors.get(studio.id)}
+              onWebReserve={() => {
+                // TODO: Implement web reservation logic
+              }}
+              onPhoneReserve={() => {
+                // TODO: Implement phone reservation logic
+              }}
+            />
           );
         })}
       </div>
