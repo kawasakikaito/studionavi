@@ -59,12 +59,13 @@ class StudioAvailability(BaseModel):
     @classmethod
     def validate_start_minutes(cls, v: List[int]) -> List[int]:
         """開始時刻の妥当性チェック"""
-        valid_minutes = {0, 30}
+        # 15分単位の開始時刻を許可
+        valid_minutes = {0, 15, 30, 45}
         invalid_minutes = set(v) - valid_minutes
         if invalid_minutes:
             raise StudioValidationError(
                 f"無効な開始時刻（分）が含まれています: {invalid_minutes}\n"
-                "開始時刻（分）は0または30である必要があります"
+                "開始時刻（分）は0、15、30、45のいずれかである必要があります"
             )
         return sorted(list(set(v)))  # 重複を削除してソート
 
@@ -277,7 +278,7 @@ class AvailabilityChecker:
         # 時間枠をソート
         sorted_slots = sorted(slots, key=lambda x: (x.start_time, x.end_time))
         logger.debug("=== 時間枠マージ処理 ===")
-        logger.debug(f"マージ前の時間枠: {[f'{s.start_time.strftime("%H:%M")}-{s.end_time.strftime("%H:%M")}' for s in sorted_slots]}")
+        logger.debug(f"マージ前の時間枠: {[f'{s.start_time.strftime('%H:%M')}-{s.end_time.strftime('%H:%M')}' for s in sorted_slots]}")
         
         merged = []
         current = sorted_slots[0]
@@ -301,5 +302,5 @@ class AvailabilityChecker:
                 current = next_slot
         
         merged.append(current)
-        logger.debug(f"マージ後の時間枠: {[f'{s.start_time.strftime("%H:%M")}-{s.end_time.strftime("%H:%M")}' for s in merged]}")
+        logger.debug(f"マージ後の時間枠: {[f'{s.start_time.strftime('%H:%M')}-{s.end_time.strftime('%H:%M')}' for s in merged]}")
         return merged
