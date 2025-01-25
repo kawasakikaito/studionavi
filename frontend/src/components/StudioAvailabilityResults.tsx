@@ -66,6 +66,17 @@ interface GroupedAvailability {
   timeRanges: string[];
 }
 
+interface FetchError {
+  message: string;
+  code: string;
+  details?: Record<string, unknown>;
+}
+
+interface FetchResult {
+  data: StudioAvailability;
+  error?: FetchError;
+}
+
 class ApiError extends Error {
   constructor(
     message: string,
@@ -76,6 +87,11 @@ class ApiError extends Error {
     this.name = "ApiError";
   }
 }
+
+const BATCH_SIZE = 1; // 一度に処理するスタジオの数
+const FETCH_DELAY = 200; // バッチ間の待機時間（ミリ秒）
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const fetchStudioAvailability = async (
   studioId: number,
@@ -121,14 +137,62 @@ const fetchStudioAvailability = async (
   }
 };
 
+const processBatch = async (
+  studios: Studio[],
+  date: string,
+  start: string,
+  end: string,
+  duration: number,
+  onProgress: (result: FetchResult) => void
+): Promise<void> => {
+  const promises = studios.map(async (studio) => {
+    try {
+      const data = await fetchStudioAvailability(
+        studio.id,
+        date,
+        start,
+        end,
+        duration
+      );
+      onProgress({ data });
+    } catch (error) {
+      let errorResult: FetchError = {
+        message: "空き状況の取得に失敗しました",
+        code: "FETCH_ERROR",
+      };
+
+      if (error instanceof ApiError) {
+        errorResult = {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+        };
+      }
+
+      onProgress({
+        data: {
+          studioId: studio.id,
+          studioName: studio.name,
+          availableRanges: [],
+        },
+        error: {
+          message: errorResult.message,
+          code: errorResult.code || "UNKNOWN_ERROR",
+          details: errorResult.details,
+        },
+      });
+    }
+  });
+
+  await Promise.all(promises);
+};
+
 const formatTimeRanges = (
   ranges: AvailableTimeSlot[]
 ): GroupedAvailability[] => {
-  // 部屋名でグループ化
   const groupedByRoom = _.groupBy(ranges, "roomName");
 
   return Object.entries(groupedByRoom).map(([roomName, slots]) => {
-    // 時間帯を文字列として整形
     const timeRanges = slots.map((slot) => `${slot.start}〜${slot.end}`);
 
     return {
@@ -150,49 +214,50 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
     StudioAvailability[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<{
-    message: string;
-    code?: string;
-    details?: Record<string, unknown>;
-  } | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [errors, setErrors] = useState<Map<number, string>>(new Map());
 
   useEffect(() => {
     const fetchAllStudioAvailability = async () => {
       setLoading(true);
-      setError(null);
+      setProgress(0);
+      setErrors(new Map());
+      setAvailabilityData([]);
 
-      try {
-        const formattedDate = format(selectedDate, "yyyy-MM-dd");
-        const durationHours = parseInt(selectedDuration.replace("時間", ""));
+      const formattedDate = format(selectedDate, "yyyy-MM-dd");
+      const durationHours = parseInt(selectedDuration.replace("時間", ""));
 
-        const availabilityPromises = studios.map((studio) =>
-          fetchStudioAvailability(
-            studio.id,
-            formattedDate,
-            searchStartTime,
-            searchEndTime,
-            durationHours
-          )
+      // バッチ処理の実行
+      for (let i = 0; i < studios.length; i += BATCH_SIZE) {
+        const batch = studios.slice(i, i + BATCH_SIZE);
+
+        await processBatch(
+          batch,
+          formattedDate,
+          searchStartTime,
+          searchEndTime,
+          durationHours,
+          (result: FetchResult) => {
+            if (result.data) {
+              setAvailabilityData(
+                (prev) => [...prev, result.data] as StudioAvailability[]
+              );
+            }
+            if (result.error) {
+              setErrors((prev) =>
+                new Map(prev).set(result.data!.studioId, result.error!.message)
+              );
+            }
+            setProgress((prev) => prev + 100 / studios.length);
+          }
         );
 
-        const results = await Promise.all(availabilityPromises);
-        setAvailabilityData(results);
-      } catch (err) {
-        if (err instanceof ApiError) {
-          setError({
-            message: err.message,
-            code: err.code,
-            details: err.details,
-          });
-        } else {
-          setError({
-            message:
-              "空き状況の取得中にエラーが発生しました。しばらく経ってから再度お試しください。",
-          });
+        if (i + BATCH_SIZE < studios.length) {
+          await sleep(FETCH_DELAY);
         }
-      } finally {
-        setLoading(false);
       }
+
+      setLoading(false);
     };
 
     fetchAllStudioAvailability();
@@ -203,26 +268,10 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
       <div className="flex justify-center items-center min-h-[200px]">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="text-sm text-muted-foreground">空き状況を確認中...</p>
+          <p className="text-sm text-muted-foreground">
+            空き状況を確認中... {Math.round(progress)}%
+          </p>
         </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center space-y-4 p-6">
-        <div className="space-y-2">
-          <p className="text-red-600">{error.message}</p>
-          {error.code && (
-            <p className="text-sm text-muted-foreground">
-              エラーコード: {error.code}
-            </p>
-          )}
-        </div>
-        <Button variant="outline" onClick={onReset}>
-          再試行
-        </Button>
       </div>
     );
   }
@@ -241,6 +290,14 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
         <span>{selectedDuration}</span>
       </div>
 
+      {errors.size > 0 && (
+        <div className="rounded-md bg-yellow-50 p-4 mb-4">
+          <p className="text-sm text-yellow-700">
+            一部のスタジオで取得に失敗しました。再度お試しください。
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6">
         {studios.map((studio) => {
           const studioAvailability = availabilityData.find(
@@ -248,6 +305,7 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
           );
           const availableRanges = studioAvailability?.availableRanges || [];
           const groupedAvailabilities = formatTimeRanges(availableRanges);
+          const hasError = errors.has(studio.id);
 
           return (
             <Card key={studio.id} className="overflow-hidden">
@@ -269,17 +327,33 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
                     </div>
                     <Badge
                       variant={
-                        availableRanges.length > 0 ? "secondary" : "destructive"
+                        hasError
+                          ? "outline"
+                          : availableRanges.length > 0
+                          ? "secondary"
+                          : "destructive"
                       }
                       className={
-                        availableRanges.length > 0
+                        hasError
+                          ? "border-yellow-500 text-yellow-700"
+                          : availableRanges.length > 0
                           ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
                           : ""
                       }
                     >
-                      {availableRanges.length > 0 ? "空きあり" : "満室"}
+                      {hasError
+                        ? "取得失敗"
+                        : availableRanges.length > 0
+                        ? "空きあり"
+                        : "満室"}
                     </Badge>
                   </div>
+
+                  {hasError && (
+                    <p className="text-sm text-yellow-600">
+                      {errors.get(studio.id)}
+                    </p>
+                  )}
 
                   {groupedAvailabilities.length > 0 && (
                     <div className="space-y-3">
@@ -313,7 +387,7 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
                       variant={
                         availableRanges.length > 0 ? "gradient" : "secondary"
                       }
-                      disabled={availableRanges.length === 0}
+                      disabled={availableRanges.length === 0 || hasError}
                     >
                       <Globe className="h-4 w-4" />
                       <span>Web予約</span>
