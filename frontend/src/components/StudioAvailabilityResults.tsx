@@ -249,14 +249,15 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
           durationHours,
           (result: FetchResult) => {
             if (result.data) {
-              setAvailabilityData(
-                (prev) => [...prev, result.data] as StudioAvailability[]
-              );
-            }
-            if (result.error) {
-              setErrors((prev) =>
-                new Map(prev).set(result.data!.studioId, result.error!.message)
-              );
+              setAvailabilityData((prev) => [...prev, result.data]);
+              // エラーが存在する場合のみエラーを設定
+              if (typeof result.error?.message === 'string') {
+                setErrors((prev) => {
+                  const newErrors = new Map(prev);
+                  newErrors.set(result.data.studioId, result.error!.message);
+                  return newErrors;
+                });
+              }
             }
             setProgress((prev) => prev + 100 / studios.length);
           }
@@ -286,42 +287,35 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
         </div>
 
         {/* Studio Cards Skeleton */}
-        <div className="grid grid-cols-1 gap-6">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="rounded-lg border bg-white shadow-sm">
-              <div className="p-6 space-y-4">
-                {/* Header Skeleton */}
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <div className="h-6 bg-gray-200 rounded w-48"></div>
-                    <div className="space-y-1">
-                      <div className="h-4 bg-gray-200 rounded w-64"></div>
-                      <div className="h-4 bg-gray-200 rounded w-56"></div>
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          {studios.map((studio) => (
+            <Card key={studio.id} className="overflow-hidden">
+              <CardContent className="p-4 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-semibold">{studio.name}</h3>
+                      <div className="mt-1 sm:mt-2 space-y-1">
+                        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                          <span>{studio.address}</span>
+                        </div>
+                        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+                          <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                          <span>{studio.hours}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="h-6 bg-gray-200 rounded w-16"></div>
-                </div>
 
-                {/* Time Slots Skeleton */}
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-32"></div>
-                  <div className="flex flex-wrap gap-2">
-                    {[...Array(4)].map((_, j) => (
-                      <div
-                        key={j}
-                        className="h-6 bg-gray-200 rounded w-20"
-                      ></div>
-                    ))}
+                  {/* Buttons Skeleton */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-4">
+                    <div className="h-10 bg-gray-200 rounded"></div>
+                    <div className="h-10 bg-gray-200 rounded"></div>
                   </div>
                 </div>
-
-                {/* Buttons Skeleton */}
-                <div className="grid grid-cols-2 gap-3 mt-4">
-                  <div className="h-10 bg-gray-200 rounded"></div>
-                  <div className="h-10 bg-gray-200 rounded"></div>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
@@ -424,14 +418,14 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
                 <div className="space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="text-lg font-semibold">{studio.name}</h3>
-                      <div className="mt-2 space-y-1">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 mr-2" />
+                      <h3 className="text-lg sm:text-xl font-semibold">{studio.name}</h3>
+                      <div className="mt-2 sm:mt-3 space-y-1.5 sm:space-y-2">
+                        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                           <span>{studio.address}</span>
                         </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4 mr-2" />
+                        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+                          <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                           <span>{studio.hours}</span>
                         </div>
                       </div>
@@ -467,20 +461,20 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
                   )}
 
                   {groupedAvailabilities.length > 0 && (
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium">予約可能な時間帯</p>
-                      <div className="space-y-2">
+                    <div className="space-y-3 sm:space-y-4">
+                      <p className="text-sm sm:text-base font-medium">予約可能な時間帯</p>
+                      <div className="space-y-2 sm:space-y-3">
                         {groupedAvailabilities.map((group, roomIdx) => (
-                          <div key={roomIdx} className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground">
+                          <div key={roomIdx} className="space-y-1.5 sm:space-y-2">
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground">
                               {group.roomName}:
                             </p>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
                               {group.timeRanges.map((timeRange, timeIdx) => (
                                 <Badge
                                   key={timeIdx}
                                   variant="outline"
-                                  className="text-xs"
+                                  className="text-[10px] sm:text-xs px-2 py-1"
                                 >
                                   {timeRange}
                                 </Badge>
@@ -492,23 +486,23 @@ const StudioAvailabilityResults: React.FC<StudioAvailabilityResultsProps> = ({
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-4">
                     <Button
-                      className="w-full flex items-center justify-center gap-2"
+                      className="w-full flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2"
                       variant={
                         availableRanges.length > 0 ? "gradient" : "secondary"
                       }
                       disabled={availableRanges.length === 0 || hasError}
                     >
-                      <Globe className="h-4 w-4" />
-                      <span>Web予約</span>
+                      <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="text-xs sm:text-sm">Web予約</span>
                     </Button>
                     <Button
                       variant="outline"
-                      className="w-full flex items-center justify-center gap-2"
+                      className="w-full flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2"
                     >
-                      <Phone className="h-4 w-4" />
-                      <span>電話予約</span>
+                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="text-xs sm:text-sm">電話予約</span>
                     </Button>
                   </div>
                 </div>
