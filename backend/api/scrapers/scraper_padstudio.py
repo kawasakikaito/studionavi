@@ -22,7 +22,9 @@ class PadStudioScraper(StudioScraperStrategy):
         """初期化処理"""
         self.base_url: str = "https://www.reserve1.jp/studio/member"
         self.session: requests.Session = requests.Session()
-        logger.debug("PadStudioScraperを初期化しました")
+        logger.info("PadStudioScraperの初期化を開始")
+        logger.debug(f"base_url: {self.base_url}")
+        logger.info("PadStudioScraperの初期化が完了")
 
     def establish_connection(self, shop_id: Optional[str] = None) -> bool:
         """予約システムへの接続を確立し、セッションを初期化する
@@ -38,36 +40,55 @@ class PadStudioScraper(StudioScraperStrategy):
         """
         logger.info("予約システムへの接続を開始")
         url = f"{self.base_url}/VisitorLogin.php"
+        logger.debug(f"接続URL: {url}")
+        
         params = self._prepare_connection_params()
+        logger.debug(f"接続パラメータ: {params}")
         
         try:
+            logger.info("接続リクエストを実行")
             self._make_connection_request(url, params)
             logger.info("接続を確立しました")
             return True
         except requests.RequestException as e:
-            logger.error(f"接続の確立に失敗: {str(e)}")
-            raise StudioScraperError("接続の確立に失敗しました") from e
+            error_msg = f"接続の確立に失敗: url={url}, params={params}, エラー: {str(e)}"
+            logger.error(error_msg)
+            raise StudioScraperError(error_msg) from e
 
     def _prepare_connection_params(self) -> Dict[str, str]:
         """接続用のパラメータを準備"""
-        logger.debug("接続パラメータを準備")
-        return {
+        logger.info("接続パラメータの準備を開始")
+        params = {
             "lc": "olsccsvld",
             "mn": "3",
             "gr": "1"
         }
+        logger.debug(f"準備された接続パラメータ: {params}")
+        logger.info("接続パラメータの準備が完了")
+        return params
 
     def _make_connection_request(self, url: str, params: Dict[str, str]) -> requests.Response:
         """接続リクエストを実行"""
-        logger.debug(f"接続リクエストを実行: url={url}")
-        response = self.session.get(url, params=params)
-        response.raise_for_status()
+        logger.info("接続リクエストの実行を開始")
+        logger.debug(f"リクエストURL: {url}")
+        logger.debug(f"リクエストパラメータ: {params}")
         
-        if not response.text.strip():
-            logger.error("接続ページが空です")
-            raise StudioScraperError("接続ページが空です")
+        try:
+            response = self.session.get(url, params=params)
+            response.raise_for_status()
             
-        return response
+            if not response.text.strip():
+                error_msg = "接続ページが空です"
+                logger.error(error_msg)
+                raise StudioScraperError(error_msg)
+                
+            logger.debug(f"レスポンスステータス: {response.status_code}")
+            logger.info("接続リクエストが正常に完了")
+            return response
+        except requests.RequestException as e:
+            error_msg = f"接続リクエストに失敗: url={url}, params={params}, エラー: {str(e)}"
+            logger.error(error_msg)
+            raise StudioScraperError(error_msg) from e
 
     def fetch_available_times(self, target_date: date) -> List[StudioAvailability]:
         """指定された日付の予約可能時間を取得
@@ -86,21 +107,31 @@ class PadStudioScraper(StudioScraperStrategy):
         """
         logger.info(f"予約可能時間の取得を開始: date={target_date}")
         url = f"{self.base_url}/member_select.php"
+        logger.debug(f"スケジュールURL: {url}")
+        
         data = self._prepare_schedule_data(target_date)
+        logger.debug(f"スケジュールデータ: {data}")
         
         try:
+            logger.info("スケジュールページの取得を開始")
             response = self._fetch_schedule_page(url, data)
+            logger.debug(f"レスポンスステータス: {response.status_code}")
+            
+            logger.info("スケジュールページの解析を開始")
             result = self._parse_schedule_page(response.text, target_date)
-            logger.info(f"予約可能時間の取得が完了: {len(result)}件")
+            logger.info(f"予約可能時間の取得が完了: 件数={len(result)}")
             return result
         except requests.RequestException as e:
-            logger.error(f"スケジュールデータの取得に失敗: {str(e)}")
-            raise StudioScraperError("スケジュールデータの取得に失敗しました") from e
+            error_msg = f"スケジュールデータの取得に失敗: url={url}, date={target_date}, エラー: {str(e)}"
+            logger.error(error_msg)
+            raise StudioScraperError(error_msg) from e
 
     def _prepare_schedule_data(self, target_date: date) -> Dict[str, str]:
         """スケジュールリクエスト用のデータを準備"""
-        logger.debug(f"スケジュールデータを準備: date={target_date}")
-        return {
+        logger.info("スケジュールデータの準備を開始")
+        logger.debug(f"対象日付: {target_date}")
+        
+        data = {
             "grand": "1",
             "Ym_select": target_date.strftime("%Y%m"),
             "office": "1480320",  # 固定値
@@ -110,19 +141,33 @@ class PadStudioScraper(StudioScraperStrategy):
             "month_btn": "",
             "day_btn": target_date.isoformat()
         }
+        
+        logger.debug(f"準備されたスケジュールデータ: {data}")
+        logger.info("スケジュールデータの準備が完了")
+        return data
 
     def _fetch_schedule_page(self, url: str, data: Dict[str, str]) -> requests.Response:
         """スケジュールページを取得"""
-        logger.debug("スケジュールページの取得を開始")
-        response = self.session.post(url, data=data)
-        response.raise_for_status()
+        logger.info("スケジュールページの取得を開始")
+        logger.debug(f"リクエストURL: {url}")
+        logger.debug(f"リクエストデータ: {data}")
         
-        if not response.text.strip():
-            logger.error("スケジュールデータが空です")
-            raise StudioScraperError("スケジュールデータが空です")
-        
-        logger.debug("スケジュールページの取得が完了")
-        return response
+        try:
+            response = self.session.post(url, data=data)
+            response.raise_for_status()
+            
+            if not response.text.strip():
+                error_msg = "スケジュールデータが空です"
+                logger.error(error_msg)
+                raise StudioScraperError(error_msg)
+            
+            logger.debug(f"レスポンスステータス: {response.status_code}")
+            logger.info("スケジュールページの取得が完了")
+            return response
+        except requests.RequestException as e:
+            error_msg = f"スケジュールページの取得に失敗: url={url}, data={data}, エラー: {str(e)}"
+            logger.error(error_msg)
+            raise StudioScraperError(error_msg) from e
 
     def _parse_schedule_page(
         self,
@@ -130,18 +175,29 @@ class PadStudioScraper(StudioScraperStrategy):
         target_date: date
     ) -> List[StudioAvailability]:
         """スケジュールページをパースして利用可能時間を抽出"""
-        logger.debug("スケジュールページのパースを開始")
-        soup = BeautifulSoup(html_content, 'html.parser')
-        schedule_table = self._find_schedule_table(soup)
+        logger.info("スケジュールページの解析を開始")
+        logger.debug(f"対象日付: {target_date}")
+        logger.debug(f"HTMLコンテンツの長さ: {len(html_content)} bytes")
         
-        if not schedule_table:
-            logger.warning("スケジュールテーブルが見つかりません")
-            return []
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            schedule_table = self._find_schedule_table(soup)
+            
+            if not schedule_table:
+                logger.warning("スケジュールテーブルが見つかりません")
+                return []
 
-        time_slots = self._extract_time_slots(schedule_table)
-        result = self._extract_studio_availabilities(schedule_table, time_slots, target_date)
-        logger.debug(f"スケジュールページのパースが完了: {len(result)}件のスタジオ情報")
-        return result
+            time_slots = self._extract_time_slots(schedule_table)
+            result = self._extract_studio_availabilities(schedule_table, time_slots, target_date)
+            
+            logger.debug(f"抽出された時間枠数: {len(time_slots)}")
+            logger.debug(f"抽出されたスタジオ数: {len(result)}")
+            logger.info("スケジュールページの解析が完了")
+            return result
+        except Exception as e:
+            error_msg = f"スケジュールページの解析に失敗: エラー: {str(e)}"
+            logger.error(error_msg)
+            raise StudioScraperError(error_msg) from e
 
     def _find_schedule_table(self, soup: BeautifulSoup) -> Optional[BeautifulSoup]:
         """スケジュールテーブルを検索"""
@@ -185,6 +241,7 @@ class PadStudioScraper(StudioScraperStrategy):
         target_date: date
     ) -> List[StudioAvailability]:
         """スタジオごとの利用可能時間を抽出"""
+        logger.info(f"利用可能時間の抽出を開始: 時間枠数={len(time_slots)}")
         studio_availabilities: List[StudioAvailability] = []
         studio_rows = schedule_table.find_all('tr')[1:]  # ヘッダー行をスキップ
         logger.debug(f"スタジオ行数: {len(studio_rows)}")
@@ -207,7 +264,7 @@ class PadStudioScraper(StudioScraperStrategy):
                         allows_thirty_minute_slots=False  # 常にFalse
                     )
                 )
-                logger.debug(f"スタジオ {studio_name} の利用可能枠: {len(available_slots)}個")
+                logger.debug(f"スタジオ {studio_name} の利用可能枠を追加: 件数={len(available_slots)}")
                 
         return studio_availabilities
 
@@ -280,8 +337,11 @@ class PadStudioScraper(StudioScraperStrategy):
         time_str = time_str.replace('：', ':').strip()
         try:
             dt = datetime.strptime(time_str, '%H:%M')
-            return dt.time()
-        except ValueError:
+            result = dt.time()
+            logger.debug(f"時刻を変換: time_str={time_str} -> time={result}")
+            return result
+        except ValueError as e:
+            logger.warning(f"時刻のパースに失敗: time_str={time_str}, エラー: {str(e)}")
             return None
 
 def register(registry: ScraperRegistry) -> None:
