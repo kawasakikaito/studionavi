@@ -18,17 +18,10 @@ logger = setup_logger(__name__)
 class PadStudioScraper(StudioScraperStrategy):
     """padstudioの予約システムに対応するスクレイパー実装"""
     
-    BASE_URL = "https://www.reserve1.jp/studio/member"
-    CONNECTION_ERROR = "接続の確立に失敗しました"
-    SCHEDULE_ERROR = "スケジュールデータの取得に失敗しました"
-    
-    def __init__(self, session: Optional[requests.Session] = None):
-        """初期化処理
-        
-        Args:
-            session: テスト用にSessionを注入可能にする
-        """
-        self.session = session if session else requests.Session()
+    def __init__(self):
+        """初期化処理"""
+        self.base_url: str = "https://www.reserve1.jp/studio/member"
+        self.session: requests.Session = requests.Session()
         logger.debug("PadStudioScraperを初期化しました")
 
     def establish_connection(self, shop_id: Optional[str] = None) -> bool:
@@ -138,31 +131,17 @@ class PadStudioScraper(StudioScraperStrategy):
     ) -> List[StudioAvailability]:
         """スケジュールページをパースして利用可能時間を抽出"""
         logger.debug("スケジュールページのパースを開始")
+        soup = BeautifulSoup(html_content, 'html.parser')
+        schedule_table = self._find_schedule_table(soup)
         
-        try:
-            soup = self._parse_html(html_content)
-            schedule_table = self._find_schedule_table(soup)
-            
-            if not schedule_table:
-                logger.warning("スケジュールテーブルが見つかりません")
-                return []
+        if not schedule_table:
+            logger.warning("スケジュールテーブルが見つかりません")
+            return []
 
-            time_slots = self._extract_time_slots(schedule_table)
-            result = self._extract_studio_availabilities(schedule_table, time_slots, target_date)
-            logger.debug(f"スケジュールページのパースが完了: {len(result)}件のスタジオ情報")
-            return result
-        except Exception as e:
-            logger.error(f"スケジュールページのパース中にエラーが発生: {str(e)}")
-            raise StudioScraperError("スケジュールページの解析に失敗しました") from e
-
-    def _parse_html(self, html_content: str) -> BeautifulSoup:
-        """HTMLコンテンツをパースしてBeautifulSoupオブジェクトを返す"""
-        logger.debug("HTMLコンテンツのパースを開始")
-        try:
-            return BeautifulSoup(html_content, 'html.parser')
-        except Exception as e:
-            logger.error(f"HTMLのパースに失敗: {str(e)}")
-            raise StudioScraperError("HTMLの解析に失敗しました") from e
+        time_slots = self._extract_time_slots(schedule_table)
+        result = self._extract_studio_availabilities(schedule_table, time_slots, target_date)
+        logger.debug(f"スケジュールページのパースが完了: {len(result)}件のスタジオ情報")
+        return result
 
     def _find_schedule_table(self, soup: BeautifulSoup) -> Optional[BeautifulSoup]:
         """スケジュールテーブルを検索"""
@@ -206,61 +185,31 @@ class PadStudioScraper(StudioScraperStrategy):
         target_date: date
     ) -> List[StudioAvailability]:
         """スタジオごとの利用可能時間を抽出"""
-        logger.debug("スタジオの利用可能時間の抽出を開始")
         studio_availabilities: List[StudioAvailability] = []
         studio_rows = schedule_table.find_all('tr')[1:]  # ヘッダー行をスキップ
         logger.debug(f"スタジオ行数: {len(studio_rows)}")
         
-        try:
-            for row in studio_rows:
-                studio_info = self._extract_studio_info(row, time_slots, target_date)
-                if studio_info:
-                    studio_availabilities.append(studio_info)
-                    
-            logger.debug(f"抽出されたスタジオ情報: {len(studio_availabilities)}件")
-            return studio_availabilities
-        except Exception as e:
-            logger.error(f"スタジオ情報の抽出中にエラーが発生: {str(e)}")
-            raise StudioScraperError("スタジオ情報の抽出に失敗しました") from e
-
-    def _extract_studio_info(
-        self,
-        row: BeautifulSoup,
-        time_slots: List[Tuple[time, time]],
-        target_date: date
-    ) -> Optional[StudioAvailability]:
-        """個々のスタジオ情報を抽出"""
-        studio_name = self._get_studio_name(row)
-        if not studio_name:
-            logger.warning("スタジオ名の取得に失敗しました")
-            return None
-            
-        available_slots = self._get_available_slots(row, time_slots)
-        if not available_slots:
-            logger.debug(f"スタジオ {studio_name} には利用可能な枠がありません")
-            return None
-            
-        return self._create_studio_availability(
-            studio_name,
-            target_date,
-            available_slots
-        )
-
-    def _create_studio_availability(
-        self,
-        studio_name: str,
-        target_date: date,
-        available_slots: List[StudioTimeSlot]
-    ) -> StudioAvailability:
-        """StudioAvailabilityオブジェクトを生成"""
-        logger.debug(f"スタジオ {studio_name} の利用可能枠を生成")
-        return StudioAvailability(
-            room_name=studio_name,
-            date=target_date,
-            time_slots=available_slots,
-            start_minutes=[0],  # 常に[0]（00分スタート）
-            allows_thirty_minute_slots=False  # 常にFalse
-        )
+        for row in studio_rows:
+            studio_name = self._get_studio_name(row)
+            if not studio_name:
+                logger.warning("スタジオ名の取得に失敗しました")
+                continue
+                
+            available_slots = self._get_available_slots(row, time_slots)
+            if available_slots:
+                # PAD Studioは常に00分スタート、30分単位予約は不可
+                studio_availabilities.append(
+                    StudioAvailability(
+                        room_name=studio_name,
+                        date=target_date,
+                        time_slots=available_slots,
+                        start_minutes=[0],  # 常に[0]（00分スタート）
+                        allows_thirty_minute_slots=False  # 常にFalse
+                    )
+                )
+                logger.debug(f"スタジオ {studio_name} の利用可能枠: {len(available_slots)}個")
+                
+        return studio_availabilities
 
     def _get_studio_name(self, row: BeautifulSoup) -> Optional[str]:
         """行からスタジオ名を取得"""
