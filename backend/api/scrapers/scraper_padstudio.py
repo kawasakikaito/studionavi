@@ -18,12 +18,27 @@ logger = setup_logger(__name__)
 class PadStudioScraper(StudioScraperStrategy):
     """padstudioの予約システムに対応するスクレイパー実装"""
     
+    BASE_URL = "https://www.reserve1.jp/studio/member"
+    MAX_RETRIES = 3
+    MIN_WAIT = 4
+    MAX_WAIT = 10
+    TIME_SLOT_DURATION = 1800  # 30分（秒）
+    
     def __init__(self):
         """初期化処理"""
-        self.base_url: str = "https://www.reserve1.jp/studio/member"
-        self.session: requests.Session = requests.Session()
         logger.info("PadStudioScraperの初期化を開始")
-        logger.debug(f"base_url: {self.base_url}")
+        super().__init__()
+        
+        # 基本設定
+        self._token: Optional[str] = None
+        self.shop_id: Optional[str] = None
+        
+        # スタジオ情報のマッピング
+        self.room_name_map: Dict[str, str] = {}
+        self.start_minutes_map: Dict[str, List[int]] = {}  # 複数の開始時刻を管理
+        self.thirty_minute_slots_map: Dict[str, bool] = {}
+        
+        logger.debug(f"base_url: {self.BASE_URL}")
         logger.info("PadStudioScraperの初期化が完了")
 
     def establish_connection(self, shop_id: Optional[str] = None) -> bool:
@@ -39,7 +54,7 @@ class PadStudioScraper(StudioScraperStrategy):
             StudioScraperError: 接続に失敗した場合
         """
         logger.info("予約システムへの接続を開始")
-        url = f"{self.base_url}/VisitorLogin.php"
+        url = f"{self.BASE_URL}/VisitorLogin.php"
         logger.debug(f"接続URL: {url}")
         
         params = self._prepare_connection_params()
@@ -106,7 +121,7 @@ class PadStudioScraper(StudioScraperStrategy):
             StudioScraperError: スケジュールデータの取得に失敗した場合
         """
         logger.info(f"予約可能時間の取得を開始: date={target_date}")
-        url = f"{self.base_url}/member_select.php"
+        url = f"{self.BASE_URL}/member_select.php"
         logger.debug(f"スケジュールURL: {url}")
         
         data = self._prepare_schedule_data(target_date)
