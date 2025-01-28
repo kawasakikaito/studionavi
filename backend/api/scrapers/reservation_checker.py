@@ -191,7 +191,10 @@ class AvailabilityChecker:
             available_duration = actual_end - adjusted_start
             logger.debug(f"利用可能時間: {available_duration}分")
             
-            if available_duration >= min_duration_minutes:
+            # 30分単位での予約が可能な場合、開始時刻の調整を許容
+            if available_duration >= min_duration_minutes and (
+                adjusted_start % 60 == start_minute  # 開始時刻が指定された分に合致
+            ):
                 # minutes を time オブジェクトに変換
                 new_start = time(
                     (adjusted_start % 1440) // 60,
@@ -249,7 +252,7 @@ class AvailabilityChecker:
                 valid_slots = self.filter_slots_in_range(
                     availability.time_slots,
                     desired_range,
-                    30 if allows_thirty_minute_slots else min_duration_minutes,
+                    min_duration_minutes,  # 常にユーザーが指定した予約時間を使用
                     start_minute
                 )
                 all_valid_slots.update(valid_slots)
