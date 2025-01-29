@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.contrib.auth import authenticate, login
 
 @api_view(['POST'])
 def register(request):
@@ -51,6 +52,9 @@ def register(request):
             password=password
         )
 
+        # 作成後自動的にログイン
+        login(request, user)
+
         return Response(
             {
                 'message': 'ユーザー登録が完了しました',
@@ -68,3 +72,50 @@ def register(request):
             {'error': '予期せぬエラーが発生しました'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['POST'])
+def login_view(request):
+    """
+    ログインAPI
+    """
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    if not all([username, password]):
+        return Response(
+            {'error': 'ユーザー名とパスワードを入力してください'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    user = authenticate(username=username, password=password)
+
+    if user is not None:
+        login(request, user)
+        return Response({
+            'message': 'ログインしました',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email
+            }
+        })
+    else:
+        return Response(
+            {'error': 'ユーザー名またはパスワードが正しくありません'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+@api_view(['GET'])
+def get_user(request):
+    """
+    現在のログインユーザーの情報を取得するAPI
+    """
+    if request.user.is_authenticated:
+        return Response({
+            'user': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email
+            }
+        })
+    return Response({'error': '認証されていません'}, status=status.HTTP_401_UNAUTHORIZED)

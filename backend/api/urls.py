@@ -9,4 +9,6 @@ router.register("studios", StudioViewSet, basename="studio")
 urlpatterns = [
     path('', include(router.urls)),
     path('auth/register/', auth.register, name='register'),
+    path('auth/login/', auth.login_view, name='login'),
+    path('auth/user/', auth.get_user, name='get_user'),
 ]
