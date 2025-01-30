@@ -9,6 +9,7 @@ import {
   Menu,
   User,
   LogIn,
+  LogOut,
   CalendarIcon,
   ChevronRight,
   Globe,
@@ -146,7 +147,7 @@ const durationOptions = ["1時間", "2時間", "3時間", "4時間", "5時間"];
 
 function MusicStudioBookingApp() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [selectedStudios, setSelectedStudios] = useState<Studio[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date()
@@ -249,6 +250,10 @@ function MusicStudioBookingApp() {
                 <span className="text-sm text-gray-600">
                   {user.username}さん
                 </span>
+                <Button variant="outline" className="h-9" onClick={logout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  ログアウト
+                </Button>
               </div>
             ) : (
               <>
@@ -295,10 +300,20 @@ function MusicStudioBookingApp() {
                   </div>
                   <div className="pt-6 border-t space-y-3">
                     {user ? (
-                      <div className="flex items-center space-x-4">
-                        <span className="text-sm text-gray-600">
-                          {user.username}さん
-                        </span>
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-4">
+                          <span className="text-sm text-gray-600">
+                            {user.username}さん
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start h-9"
+                          onClick={logout}
+                        >
+                          <LogOut className="h-4 w-4 mr-2" />
+                          ログアウト
+                        </Button>
                       </div>
                     ) : (
                       <>

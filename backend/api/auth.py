@@ -4,7 +4,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
+from django.views.decorators.csrf import csrf_exempt
 
 @api_view(['POST'])
 def register(request):
@@ -104,6 +105,19 @@ def login_view(request):
             {'error': 'ユーザー名またはパスワードが正しくありません'},
             status=status.HTTP_401_UNAUTHORIZED
         )
+
+@api_view(['POST'])
+def logout_view(request):
+    """
+    ログアウトAPI
+    """
+    if not request.user.is_authenticated:
+        return Response(
+            {'error': '認証されていません'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    logout(request)
+    return Response({'message': 'ログアウトしました'})
 
 @api_view(['GET'])
 def get_user(request):
