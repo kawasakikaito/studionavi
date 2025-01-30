@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User, getCurrentUser, logout } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
@@ -13,6 +14,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadUser = async () => {
@@ -33,8 +35,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await logout();
       setUser(null);
+      toast({
+        title: "ログアウト成功",
+        description: "ログアウトしました",
+      });
     } catch (error) {
       console.error("Failed to logout:", error);
+      toast({
+        variant: "destructive",
+        title: "エラー",
+        description: "ログアウトに失敗しました",
+      });
     }
   };
 
