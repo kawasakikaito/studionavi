@@ -82,9 +82,6 @@ class Studio246Scraper(StudioScraperStrategy):
         super().__init__()
         self._token: Optional[str] = None
         self.shop_id: Optional[str] = None
-        self.room_name_map: Dict[str, str] = {}
-        self.start_minutes_map: Dict[str, List[int]] = {}  # 複数の開始時刻を管理
-        self.thirty_minute_slots_map: Dict[str, bool] = {}
 
     def establish_connection(self, shop_id: str) -> bool:
         """予約システムへの接続を確立し、トークンを取得する"""
@@ -136,11 +133,6 @@ class Studio246Scraper(StudioScraperStrategy):
         """接続情報を設定"""
         self.shop_id = shop_id
         self._token = token
-        
-        # 各スタジオの開始時刻を設定
-        for i in range(1, 5):  # スタジオ1から4まで
-            self.start_minutes_map[str(i)] = [0, 15, 30, 45]  # 15分単位で予約可能
-            self.thirty_minute_slots_map[str(i)] = True  # 30分単位での予約を許可
 
     def fetch_available_times(self, target_date: date) -> List[StudioAvailability]:
         """指定された日付の予約可能時間を取得
@@ -158,71 +150,16 @@ class Studio246Scraper(StudioScraperStrategy):
         logger.debug(f"処理開始時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
         try:
-            # スケジュールデータを取得
-            schedule_data = self._fetch_schedule_data(target_date)
-            logger.debug(f"取得したスケジュールデータ:")
-            for item in schedule_data:
-                logger.debug(f"  - {json.dumps(item, ensure_ascii=False, indent=2)}")
-
-            # 各部屋の空き状況を解析
-            availabilities = []
-            logger.debug("=== 部屋ごとの空き状況解析開始 ===")
-            for studio_data in schedule_data:
-                room_name = studio_data.get("room_name", "")
-                logger.debug(f"\n--- スタジオ {room_name} の解析開始 ---")
-                time_slots = []
-                
-                # 利用可能な時間枠を処理
-                logger.debug(f"タイムライン数: {len(studio_data.get('timeline', []))}")
-                for slot in studio_data.get("timeline", []):
-                    try:
-                        logger.debug(f"\n時間枠データ: {json.dumps(slot, ensure_ascii=False, indent=2)}")
-                        start_time = slot["start"]
-                        end_time = slot["end"]
-                        logger.debug(f"解析された時間 - 開始: {start_time}, 終了: {end_time}")
-                        
-                        if slot.get("available", False):
-                            time_slot = StudioTimeSlot(
-                                start_time=start_time,
-                                end_time=end_time
-                            )
-                            time_slots.append(time_slot)
-                            logger.debug(f"利用可能な時間枠を追加: {time_slot}")
-                        else:
-                            logger.debug("この時間枠は利用不可")
-                    except (ValueError, KeyError) as e:
-                        logger.warning(f"時間枠の解析に失敗: {str(e)}")
-                        logger.debug(f"エラー詳細:\n{traceback.format_exc()}")
-                        continue
-
-                # 時間枠が存在する場合のみ追加
-                if time_slots:
-                    logger.debug(f"\nスタジオ {room_name} の利用可能時間枠:")
-                    for ts in time_slots:
-                        logger.debug(f"  {ts.start_time} - {ts.end_time}")
-                    
-                    # 246スタジオは15分単位で予約可能
-                    availability = StudioAvailability(
-                        room_name=room_name,
-                        date=target_date,
-                        time_slots=time_slots,
-                        start_minutes=[0, 15, 30, 45],  # 15分単位で予約可能
-                        allows_thirty_minute_slots=True  # 30分単位での予約を許可
-                    )
-                    availabilities.append(availability)
-                    logger.debug(f"スタジオ {room_name} の利用可能情報を追加完了")
-                else:
-                    logger.debug(f"スタジオ {room_name} の利用可能時間枠なし")
-
-            logger.info(f"=== 予約可能時間の取得が完了 - 件数: {len(availabilities)} ===")
-            logger.debug("取得された予約可能時間の詳細:")
-            for avail in availabilities:
-                logger.debug(f"\nスタジオ: {avail.room_name}")
-                logger.debug(f"日付: {avail.date}")
-                logger.debug("時間枠:")
-                for ts in avail.time_slots:
-                    logger.debug(f"  {ts.start_time} - {ts.end_time}")
-            return availabilities
+            # スケジュールデータを取得し、HTMLから必要な情報を抽出
+            response_text = self._fetch_schedule_data(target_date)
+            
+            # HTMLから予約可能時間を抽出
+            soup = self._parse_schedule_html(response_text)
+            rooms = self._extract_room_info(soup)
+            self._process_timeline_rows(soup, rooms)
+            
+            # 最終的なデータを生成
+            return self._create_availability_list(rooms, target_date)
 
         except Exception as e:
             error_msg = f"スケジュールデータの取得に失敗: date={target_date}, エラー: {str(e)}"
@@ -230,7 +167,7 @@ class Studio246Scraper(StudioScraperStrategy):
             logger.error(f"エラー詳細:\n{traceback.format_exc()}")
             raise StudioScraperError(error_msg) from e
 
-    def _fetch_schedule_data(self, target_date: date) -> List[Dict]:
+    def _fetch_schedule_data(self, target_date: date) -> str:
         """APIから生のスケジュールデータを取得"""
         try:
             headers, data = self._prepare_schedule_request(target_date)
@@ -249,13 +186,7 @@ class Studio246Scraper(StudioScraperStrategy):
             
             response.raise_for_status()
             
-            # HTMLレスポンスをパースしてスケジュールデータを抽出
-            parsed_schedule = self._extract_schedule_from_html(response.text, target_date)
-            if not parsed_schedule:
-                logger.warning("スケジュールデータが空です")
-                return []
-                
-            return parsed_schedule
+            return response.text
             
         except requests.RequestException as e:
             logger.error(f"スケジュールデータの取得に失敗: {str(e)}")
