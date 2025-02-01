@@ -165,7 +165,7 @@ class Studio246Scraper(StudioScraperStrategy):
             logger.debug(f"抽出された部屋数: {len(rooms)}")
             
             logger.info("タイムラインの処理を開始")
-            self._process_timeline_rows(soup, rooms)
+            self._process_timeline_rows(soup, rooms, target_date)
             
             # 最終的なデータを生成
             logger.info("利用可能時間リストの生成を開始")
@@ -227,7 +227,7 @@ class Studio246Scraper(StudioScraperStrategy):
         rooms = self._extract_room_info(soup)
         
         # タイムラインの処理
-        self._process_timeline_rows(soup, rooms)
+        self._process_timeline_rows(soup, rooms, target_date)
         
         # 最終的なデータの生成
         return self._create_availability_list(rooms, target_date)
@@ -269,8 +269,8 @@ class Studio246Scraper(StudioScraperStrategy):
         timeline_header = soup.find('tr', class_='timeline_header')
         logger.debug("タイムラインヘッダーの検索を開始")
         
-        # 開始時間の取得
-        time_cells = timeline_header.find_all('td')
+        # 開始時間の取得（最初の空のセルを除外）
+        time_cells = timeline_header.find_all('td')[1:]  # 最初の空のセルを除外
         start_minutes = []
         logger.debug(f"時間セル数: {len(time_cells)}")
         
@@ -284,25 +284,36 @@ class Studio246Scraper(StudioScraperStrategy):
                 except ValueError:
                     logger.warning(f"開始時間の解析に失敗: {text}")
         
-        # 部屋情報の取得
-        room_cells = timeline_header.find_all('th')[1:]
-        logger.debug(f"部屋セル数: {len(room_cells)}")
+        # 開始時間が見つからない場合のデフォルト値
+        if not start_minutes:
+            start_minutes = [0, 15, 30, 45]  # デフォルトの開始時間
+            logger.debug("開始時間が見つからないためデフォルト値を使用")
         
-        for i, cell in enumerate(room_cells):
-            room_name = cell.get_text(strip=True)
-            if room_name and i < len(start_minutes):
-                rooms[str(i)] = Studio246Room(room_name, start_minutes[i])
-                logger.debug(f"部屋を追加: {room_name} (開始時間: {start_minutes[i]}分)")
+        # タイムラインヘッダーの次の行から部屋数を判断
+        first_data_row = timeline_header.find_next_sibling('tr')
+        if first_data_row:
+            # 時間セルを除いた残りのセル数が部屋数
+            room_cells = first_data_row.find_all('td')[1:]  # 最初のtdは時間なので除外
+            room_count = len(room_cells)
+            logger.debug(f"検出された部屋数: {room_count}")
+            
+            # 部屋情報の作成
+            for i in range(room_count):
+                room_name = f"ROOM {i + 1}"  # 部屋に番号を付ける
+                if i < len(start_minutes):
+                    rooms[str(i)] = Studio246Room(f"{start_minutes[i]}分開始の部屋", start_minutes[i])
+                    logger.debug(f"部屋を追加: {room_name} (開始時間: {start_minutes[i]}分)")
                 
         logger.info(f"部屋情報の抽出が完了: {len(rooms)}部屋")
         return rooms
 
-    def _process_timeline_rows(self, soup: BeautifulSoup, rooms: Dict[str, Studio246Room]) -> None:
+    def _process_timeline_rows(self, soup: BeautifulSoup, rooms: Dict[str, Studio246Room], target_date: date) -> None:
         """タイムラインの各行を処理して部屋の時間枠情報を更新
         
         Args:
             soup: パース済みのHTMLオブジェクト
             rooms: 更新対象の部屋情報マップ
+            target_date: 対象日付
         """
         logger.debug("タイムライン行の処理を開始")
         rows = soup.find_all('tr')
@@ -327,10 +338,13 @@ class Studio246Scraper(StudioScraperStrategy):
                 for i, cell in enumerate(cells):
                     room_key = str(i)
                     if room_key in rooms:
-                        state = cell.get('state', '')
-                        classes = cell.get('class', [])
-                        rooms[room_key].add_time_slot(current_time, end_time, state, classes)
-                        logger.debug(f"時間枠を追加: 部屋={rooms[room_key].room_name}, 時間={current_time}-{end_time}, 状態={state}")
+                        # セルの日付をチェック
+                        cell_date = cell.get('data-date')
+                        if cell_date and cell_date == target_date.strftime('%Y-%m-%d'):
+                            state = cell.get('state', '')
+                            classes = cell.get('class', [])
+                            rooms[room_key].add_time_slot(current_time, end_time, state, classes)
+                            logger.debug(f"時間枠を追加: 部屋={rooms[room_key].room_name}, 時間={current_time}-{end_time}, 状態={state}")
                     
             except ValueError:
                 logger.warning(f"時間の解析に失敗: {time_str}")
