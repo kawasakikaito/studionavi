@@ -249,13 +249,13 @@ class Studio246Scraper(StudioScraperStrategy):
             
             response.raise_for_status()
             
-            # HTMLレスポンスをパース
-            schedule_data = self._parse_schedule_html(response.text, target_date)
-            if not schedule_data:
+            # HTMLレスポンスをパースしてスケジュールデータを抽出
+            parsed_schedule = self._extract_schedule_from_html(response.text, target_date)
+            if not parsed_schedule:
                 logger.warning("スケジュールデータが空です")
                 return []
                 
-            return schedule_data
+            return parsed_schedule
             
         except requests.RequestException as e:
             logger.error(f"スケジュールデータの取得に失敗: {str(e)}")
@@ -264,19 +264,68 @@ class Studio246Scraper(StudioScraperStrategy):
             logger.error(f"スケジュールデータの解析に失敗: {str(e)}")
             raise StudioScraperError("スケジュールデータの解析に失敗しました") from e
 
-    def _parse_schedule_html(self, html_content: str, target_date: date) -> List[Dict]:
-        """HTMLコンテンツを解析してスケジュールデータを取得"""
-        soup = BeautifulSoup(html_content, 'html.parser')
+    def _extract_schedule_from_html(self, html_content: str, target_date: date) -> List[Dict]:
+        """HTMLコンテンツからスケジュールデータを抽出して処理する
         
-        # 部屋情報の初期化
-        rooms: Dict[str, Studio246Room] = {}
+        Args:
+            html_content: 解析対象のHTML文字列
+            target_date: 対象日付
+            
+        Returns:
+            List[Dict]: 処理済みのスケジュールデータ
+            
+        Raises:
+            StudioScraperError: データの抽出や処理に失敗した場合
+        """
+        # HTMLの解析
+        soup = self._parse_schedule_html(html_content)
         
-        # timeline_headerから部屋情報を取得
-        timeline_header = soup.find('tr', class_='timeline_header')
-        if not timeline_header:
-            raise StudioScraperError("タイムラインヘッダーが見つかりません")
+        # 部屋情報の抽出
+        rooms = self._extract_room_info(soup)
+        
+        # タイムラインの処理
+        self._process_timeline_rows(soup, rooms)
+        
+        # 最終的なデータの生成
+        return self._create_availability_list(rooms, target_date)
 
-        # timeline_headerのtd要素から開始時間を取得
+    def _parse_schedule_html(self, html_content: str) -> BeautifulSoup:
+        """HTMLコンテンツをBeautifulSoupオブジェクトに変換
+        
+        Args:
+            html_content: 解析対象のHTML文字列
+            
+        Returns:
+            BeautifulSoup: パース済みのHTMLオブジェクト
+            
+        Raises:
+            StudioScraperError: HTMLの解析に失敗した場合
+        """
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            if not soup.find('tr', class_='timeline_header'):
+                raise StudioScraperError("タイムラインヘッダーが見つかりません")
+            return soup
+        except Exception as e:
+            logger.error(f"HTMLの解析に失敗: {str(e)}")
+            raise StudioScraperError("HTMLの解析に失敗しました") from e
+
+    def _extract_room_info(self, soup: BeautifulSoup) -> Dict[str, Studio246Room]:
+        """タイムラインヘッダーから部屋情報を抽出
+        
+        Args:
+            soup: パース済みのHTMLオブジェクト
+            
+        Returns:
+            Dict[str, Studio246Room]: 部屋情報のマップ
+            
+        Raises:
+            StudioScraperError: 部屋情報の抽出に失敗した場合
+        """
+        rooms: Dict[str, Studio246Room] = {}
+        timeline_header = soup.find('tr', class_='timeline_header')
+        
+        # 開始時間の取得
         time_cells = timeline_header.find_all('td')
         start_minutes = []
         for cell in time_cells:
@@ -287,16 +336,23 @@ class Studio246Scraper(StudioScraperStrategy):
                     start_minutes.append(minute)
                 except ValueError:
                     logger.warning(f"開始時間の解析に失敗: {text}")
-            
-        # 各部屋の情報を取得
-        for i, cell in enumerate(timeline_header.find_all('th')[1:]):  # 最初のthはラベルなのでスキップ
+        
+        # 部屋情報の取得
+        for i, cell in enumerate(timeline_header.find_all('th')[1:]):
             room_name = cell.get_text(strip=True)
             if room_name and i < len(start_minutes):
                 rooms[str(i)] = Studio246Room(room_name, start_minutes[i])
+                
+        return rooms
 
-        # タイムラインの各行を処理
+    def _process_timeline_rows(self, soup: BeautifulSoup, rooms: Dict[str, Studio246Room]) -> None:
+        """タイムラインの各行を処理して部屋の時間枠情報を更新
+        
+        Args:
+            soup: パース済みのHTMLオブジェクト
+            rooms: 更新対象の部屋情報マップ
+        """
         for row in soup.find_all('tr'):
-            # 時間セルを取得
             time_cell = row.find('td', class_='time_hidden')
             if not time_cell:
                 continue
@@ -305,57 +361,74 @@ class Studio246Scraper(StudioScraperStrategy):
             if not time_str:
                 continue
                 
-            # 時間を解析
             try:
-                hour, minute = map(int, time_str.split(':'))
-                current_time = time(hour=hour, minute=minute)
-                
-                # 終了時間は1時間後
-                end_hour = (hour + 1) % 24
-                end_time = time(hour=end_hour, minute=minute)
-                
-                # 各部屋のセルを処理
+                current_time, end_time = self._parse_time_range(time_str)
                 cells = row.find_all('td')[1:]  # 最初のtdは時間なのでスキップ
+                
                 for i, cell in enumerate(cells):
                     room_key = str(i)
                     if room_key in rooms:
-                        # セルの状態とクラスを取得
                         state = cell.get('state', '')
                         classes = cell.get('class', [])
-                        
-                        # すべての情報を保持
                         rooms[room_key].add_time_slot(current_time, end_time, state, classes)
-                
+                        
             except ValueError:
                 logger.warning(f"時間の解析に失敗: {time_str}")
                 continue
 
-        # 結果を整形（StudioAvailabilityの形式に変換）
+    def _parse_time_range(self, time_str: str) -> Tuple[time, time]:
+        """時刻文字列から開始時刻と終了時刻を解析
+        
+        Args:
+            time_str: 解析対象の時刻文字列（HH:MM形式）
+            
+        Returns:
+            Tuple[time, time]: (開始時刻, 終了時刻)のタプル
+            
+        Raises:
+            ValueError: 時刻の解析に失敗した場合
+        """
+        hour, minute = map(int, time_str.split(':'))
+        current_time = time(hour=hour, minute=minute)
+        end_hour = (hour + 1) % 24
+        end_time = time(hour=end_hour, minute=minute)
+        return current_time, end_time
+
+    def _create_availability_list(
+        self,
+        rooms: Dict[str, Studio246Room],
+        target_date: date
+    ) -> List[Dict]:
+        """部屋情報からStudioAvailabilityオブジェクトのリストを生成
+        
+        Args:
+            rooms: 部屋情報のマップ
+            target_date: 対象日付
+            
+        Returns:
+            List[Dict]: StudioAvailabilityオブジェクトのリスト
+        """
         result = []
         for room in rooms.values():
-            # 予約可能な時間枠を取得
             available_slots = room.get_available_time_slots()
-            
-            # StudioTimeSlotオブジェクトに変換
-            time_slots = []
-            for slot in available_slots:
-                time_slots.append(
-                    StudioTimeSlot(
-                        start_time=slot["start"],
-                        end_time=slot["end"]
-                    )
+            time_slots = [
+                StudioTimeSlot(
+                    start_time=slot["start"],
+                    end_time=slot["end"]
                 )
+                for slot in available_slots
+            ]
             
-            # StudioAvailabilityオブジェクトを作成
-            availability = StudioAvailability(
-                room_name=room.room_name,
-                date=target_date,
-                time_slots=time_slots,
-                start_minutes=[room.start_minutes],  # その部屋の開始時間
-                allows_thirty_minute_slots=False  # Studio246は30分単位での予約を許可しない
-            )
-            result.append(availability)
-            
+            if time_slots:  # 利用可能な時間枠がある場合のみ追加
+                availability = StudioAvailability(
+                    room_name=room.room_name,
+                    date=target_date,
+                    time_slots=time_slots,
+                    start_minutes=[room.start_minutes],  # その部屋の開始時間
+                    allows_thirty_minute_slots=False  # Studio246は30分単位での予約を許可しない
+                )
+                result.append(availability)
+                
         return result
 
     def _prepare_schedule_request(self, target_date: date) -> tuple:
@@ -388,4 +461,3 @@ def register(registry: ScraperRegistry) -> None:
             base_url="https://www.studio246.net/reserve/"
         )
     )
-
