@@ -124,7 +124,7 @@ class StudioAvailability(BaseModel):
     room_name: str
     date: date
     time_slots: List[StudioTimeSlot]
-    valid_start_minutes: Set[int] = {0, 30}  # 有効な開始時刻（分）のセット
+    valid_start_minutes: Set[int] = {0, 15, 30, 45}  # 有効な開始時刻（分）のセット
     start_minutes: List[int] = [0]  # 複数の開始時刻を保持
     allows_thirty_minute_slots: bool = False
 
@@ -135,7 +135,7 @@ class StudioAvailability(BaseModel):
         # モデルインスタンスから有効な開始時刻を取得
         # valid_start_minutesはstart_minutesより先に定義されているため、
         # ValidationInfoから直接取得できる
-        valid_minutes = info.data.get('valid_start_minutes', {0, 30})
+        valid_minutes = info.data.get('valid_start_minutes', {0, 15, 30, 45})
         invalid_minutes = set(v) - valid_minutes
         if invalid_minutes:
             raise StudioValidationError(
