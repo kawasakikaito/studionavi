@@ -70,7 +70,7 @@ STUDIO_CONFIGS: Dict[str, StudioConfig] = {
         name="Studio246 JUSO",
         scraper=ScraperConfig(
             scraper_type="studio246",
-            shop_id="10",  # 大阪・十三
+            shop_id="11",  # 大阪・十三
         ),
     ),
     "8": StudioConfig(
@@ -86,7 +86,7 @@ STUDIO_CONFIGS: Dict[str, StudioConfig] = {
         name="Studio246 WEST",
         scraper=ScraperConfig(
             scraper_type="studio246",
-            shop_id="11",  # 神戸・三宮
+            shop_id="05",  # 神戸・三宮
         ),
     ),
     "10": StudioConfig(
@@ -94,7 +94,7 @@ STUDIO_CONFIGS: Dict[str, StudioConfig] = {
         name="Studio246 KYOTO",
         scraper=ScraperConfig(
             scraper_type="studio246",
-            shop_id="12",  # 京都・大宮
+            shop_id="06",  # 京都・大宮
         ),
     ),
     "11": StudioConfig(
@@ -102,7 +102,7 @@ STUDIO_CONFIGS: Dict[str, StudioConfig] = {
         name="Studio246 NAGOYA",
         scraper=ScraperConfig(
             scraper_type="studio246",
-            shop_id="13",  # 名古屋・東山
+            shop_id="07",  # 名古屋・東山
         ),
     ),
 }
