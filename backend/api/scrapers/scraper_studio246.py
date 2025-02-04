@@ -82,6 +82,7 @@ class Studio246Scraper(StudioScraperStrategy):
         super().__init__()
         self._token: Optional[str] = None
         self.shop_id: Optional[str] = None
+        self._time_slot_minutes: Optional[int] = None  # 予約枠の時間（分）
 
     def establish_connection(self, shop_id: str) -> bool:
         """予約システムへの接続を確立し、トークンを取得する"""
@@ -253,6 +254,38 @@ class Studio246Scraper(StudioScraperStrategy):
             logger.error(f"HTMLの解析に失敗: {str(e)}")
             raise StudioScraperError("HTMLの解析に失敗しました") from e
 
+    def _get_time_slot_minutes(self, timeline_header: BeautifulSoup) -> int:
+        """タイムラインヘッダーから予約枠の時間（分）を取得
+        
+        Args:
+            timeline_header: タイムラインヘッダー要素
+            
+        Returns:
+            int: 予約枠の時間（分）
+            
+        Raises:
+            StudioScraperError: 予約枠の時間の取得に失敗した場合
+        """
+        time_cells = timeline_header.find_all('td')[1:]  # 最初の空のセルを除外
+        minutes = []
+        
+        for cell in time_cells:
+            text = cell.get_text(strip=True)
+            if text and '分' in text:
+                try:
+                    minute = int(text.replace('分', ''))
+                    minutes.append(minute)
+                except ValueError:
+                    continue
+        
+        if len(minutes) < 2:
+            raise StudioScraperError("予約枠の時間を特定できません")
+            
+        # 連続する時間の差分を取得
+        time_slot = minutes[1] - minutes[0]
+        logger.debug(f"予約枠の時間: {time_slot}分")
+        return time_slot
+
     def _extract_room_info(self, soup: BeautifulSoup) -> Dict[str, Studio246Room]:
         """タイムラインヘッダーから部屋情報を抽出
         
@@ -269,6 +302,9 @@ class Studio246Scraper(StudioScraperStrategy):
         timeline_header = soup.find('tr', class_='timeline_header')
         logger.debug("タイムラインヘッダーの検索を開始")
         
+        # 予約枠の時間を取得
+        self._time_slot_minutes = self._get_time_slot_minutes(timeline_header)
+        
         # 開始時間の取得（最初の空のセルを除外）
         time_cells = timeline_header.find_all('td')[1:]  # 最初の空のセルを除外
         start_minutes = []
@@ -284,10 +320,8 @@ class Studio246Scraper(StudioScraperStrategy):
                 except ValueError:
                     logger.warning(f"開始時間の解析に失敗: {text}")
         
-        # 開始時間が見つからない場合のデフォルト値
         if not start_minutes:
-            start_minutes = [0, 15, 30, 45]  # デフォルトの開始時間
-            logger.debug("開始時間が見つからないためデフォルト値を使用")
+            raise StudioScraperError("開始時間が見つかりません")
         
         # タイムラインヘッダーの次の行から部屋数を判断
         first_data_row = timeline_header.find_next_sibling('tr')
@@ -341,10 +375,12 @@ class Studio246Scraper(StudioScraperStrategy):
                         # セルの日付をチェック
                         cell_date = cell.get('data-date')
                         if cell_date and cell_date == target_date.strftime('%Y-%m-%d'):
-                            state = cell.get('state', '')
-                            classes = cell.get('class', [])
-                            rooms[room_key].add_time_slot(current_time, end_time, state, classes)
-                            logger.debug(f"時間枠を追加: 部屋={rooms[room_key].room_name}, 時間={current_time}-{end_time}, 状態={state}")
+                            # 00:00-07:00の時間枠は追加しない
+                            if not (current_time.hour >= 0 and current_time.hour < 7):
+                                state = cell.get('state', '')
+                                classes = cell.get('class', [])
+                                rooms[room_key].add_time_slot(current_time, end_time, state, classes)
+                                logger.debug(f"時間枠を追加: 部屋={rooms[room_key].room_name}, 時間={current_time}-{end_time}, 状態={state}")
                     
             except ValueError:
                 logger.warning(f"時間の解析に失敗: {time_str}")
@@ -362,10 +398,24 @@ class Studio246Scraper(StudioScraperStrategy):
         Raises:
             ValueError: 時刻の解析に失敗した場合
         """
+        if not self._time_slot_minutes:
+            raise StudioScraperError("予約枠の時間が設定されていません")
+            
         hour, minute = map(int, time_str.split(':'))
         current_time = time(hour=hour, minute=minute)
-        end_hour = (hour + 1) % 24
-        end_time = time(hour=end_hour, minute=minute)
+        
+        # 現在時刻を分単位に変換し、予約枠の時間を加算
+        total_minutes = hour * 60 + minute + self._time_slot_minutes
+        
+        # 分単位から時と分に変換
+        end_hour = (total_minutes // 60) % 24
+        end_minute = total_minutes % 60
+        
+        end_time = time(hour=end_hour, minute=end_minute)
+        
+        if end_time <= current_time:
+            raise ValueError(f"開始時刻({current_time})は終了時刻({end_time})より前である必要があります")
+            
         return current_time, end_time
 
     def _create_availability_list(
@@ -409,6 +459,24 @@ class Studio246Scraper(StudioScraperStrategy):
                 logger.debug(f"利用可能時間を追加: 部屋={room.room_name}, 時間枠数={len(time_slots)}")
                 
         logger.info(f"利用可能時間リストの生成が完了: {len(result)}部屋")
+        # 結果をJSONとしてログに出力
+        result_json = [
+            {
+                "room_name": avail.room_name,
+                "date": avail.date.isoformat(),
+                "time_slots": [
+                    {
+                        "start_time": slot.start_time.strftime("%H:%M"),
+                        "end_time": slot.end_time.strftime("%H:%M")
+                    }
+                    for slot in avail.time_slots
+                ],
+                "start_minutes": avail.start_minutes,
+                "allows_thirty_minute_slots": avail.allows_thirty_minute_slots
+            }
+            for avail in result
+        ]
+        logger.info(f"取得した予約可能時間: {json.dumps(result_json, indent=2, ensure_ascii=False)}")
         return result
 
     def _prepare_schedule_request(self, target_date: date) -> tuple:
