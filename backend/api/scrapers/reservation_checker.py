@@ -266,13 +266,21 @@ class AvailabilityChecker:
             if all_valid_slots:
                 result.append(StudioAvailability(
                     room_name=availability.room_name,
-                    time_slots=list(all_valid_slots),  # setをlistに変換
+                    time_slots=self._sort_time_slots(all_valid_slots),
                     date=availability.date,
                     start_minutes=start_minutes,
                     allows_thirty_minute_slots=allows_thirty_minute_slots
                 ))
         
-        return result
+        return self._sort_availabilities(result)
+
+    def _sort_time_slots(self, slots: Set[StudioTimeSlot]) -> List[StudioTimeSlot]:
+        """時間枠を開始時刻と終了時刻でソート"""
+        return sorted(slots, key=lambda x: (x.start_time, x.end_time))
+
+    def _sort_availabilities(self, availabilities: List[StudioAvailability]) -> List[StudioAvailability]:
+        """空き状況を部屋名でソート"""
+        return sorted(availabilities, key=lambda x: x.room_name)
 
     def _merge_overlapping_slots(self, slots: Set[StudioTimeSlot]) -> List[StudioTimeSlot]:
         """重複または連続する時間枠をマージ"""
