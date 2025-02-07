@@ -105,4 +105,12 @@ STUDIO_CONFIGS: Dict[str, StudioConfig] = {
             shop_id="07",  # 名古屋・東山
         ),
     ),
+    "12": StudioConfig(
+        id=12,
+        name="ベースオントップ 京橋店",
+        scraper=ScraperConfig(
+            scraper_type="studiol",
+            shop_id="654",
+        ),
+    ),
 }

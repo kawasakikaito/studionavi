@@ -108,9 +108,9 @@
       "name": "Studio246 JUSO",
       "address": "大阪府大阪市淀川区十三本町1-12-23 2F",
       "is_24h": false,
-      "opening_time": "10:00:00",
-      "closing_time": "23:00:00",
-      "closes_next_day": false,
+      "opening_time": "07:00:00",
+      "closing_time": "02:00:00",
+      "closes_next_day": true,
       "reservation_url": "https://www.studio246.net/reserve/?si=10",
       "self_practice_reservation_start_date": 30,
       "self_practice_reservation_start_time": "00:00:00",
@@ -184,6 +184,23 @@
       "self_practice_reservation_start_time": "00:00:00",
       "created_at": "2025-01-22T08:43:39+09:00",
       "updated_at": "2025-01-22T08:43:39+09:00"
+    }
+  },
+  {
+    "model": "api.studio",
+    "pk": 12,
+    "fields": {
+      "name": "ベースオントップ 京橋店",
+      "address": "大阪府大阪市城東区蒲生1-8-4",
+      "is_24h": false,
+      "opening_time": "07:00:00",
+      "closing_time": "02:00:00",
+      "closes_next_day": true,
+      "reservation_url": "https://studiol.jp/pc/studio/654",
+      "self_practice_reservation_start_date": 14,
+      "self_practice_reservation_start_time": "00:00:00",
+      "created_at": "2025-02-06T08:17:59+09:00",
+      "updated_at": "2025-02-06T08:17:59+09:00"
     }
   }
 ]
