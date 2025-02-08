@@ -87,15 +87,16 @@ class Studio246Scraper(StudioScraperStrategy):
     def establish_connection(self, shop_id: str) -> bool:
         """予約システムへの接続を確立し、トークンを取得する"""
         try:
+            logger.info(f"接続確立を開始: shop_id={shop_id}")
             token = self._fetch_token(shop_id)
             self._set_connection_info(shop_id, token)
-            logger.info(f"接続を確立しました: shop_id={shop_id}")
+            logger.info(f"接続確立が完了: shop_id={shop_id}")
             return True
-            
         except StudioScraperError:
+            logger.error(f"接続確立に失敗: shop_id={shop_id}")
             raise
         except Exception as e:
-            logger.error(f"接続の確立に失敗: {str(e)}")
+            logger.error(f"接続確立で予期せぬエラーが発生: shop_id={shop_id}, エラー: {str(e)}")
             raise StudioScraperError("接続の確立に失敗しました") from e
 
     def _fetch_token(self, shop_id: str) -> str:
@@ -119,7 +120,7 @@ class Studio246Scraper(StudioScraperStrategy):
                 if match:
                     phpsessid = match.group(1)
             
-            logger.debug(f"取得したPHPSESSID: {phpsessid}")
+            logger.debug(f"取得したPHPSESSID: {phpsessid[:10]}...")
             
             if not phpsessid:
                 raise StudioScraperError("セッションIDの取得に失敗しました")
@@ -306,7 +307,7 @@ class Studio246Scraper(StudioScraperStrategy):
         self._time_slot_minutes = self._get_time_slot_minutes(timeline_header)
         
         # 開始時間の取得（最初の空のセルを除外）
-        time_cells = timeline_header.find_all('td')[1:]  # 最初の空のセルを除外
+        time_cells = timeline_header.find_all('td')[1:]  # 最初のtdは時間なのでスキップ
         start_minutes = []
         logger.debug(f"時間セル数: {len(time_cells)}")
         

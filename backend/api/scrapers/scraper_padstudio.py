@@ -12,6 +12,7 @@ from api.scrapers.scraper_base import (
 )
 from api.scrapers.scraper_registry import ScraperRegistry, ScraperMetadata
 from config.logging_config import setup_logger
+import json
 
 logger = setup_logger(__name__)
 
@@ -53,7 +54,7 @@ class PadStudioScraper(StudioScraperStrategy):
         Raises:
             StudioScraperError: 接続に失敗した場合
         """
-        logger.info("予約システムへの接続を開始")
+        logger.info(f"接続確立を開始: shop_id={shop_id}")
         url = f"{self.BASE_URL}/VisitorLogin.php"
         logger.debug(f"接続URL: {url}")
         
@@ -61,12 +62,15 @@ class PadStudioScraper(StudioScraperStrategy):
         logger.debug(f"接続パラメータ: {params}")
         
         try:
-            logger.info("接続リクエストを実行")
             self._make_connection_request(url, params)
-            logger.info("接続を確立しました")
+            logger.info(f"接続確立が完了: shop_id={shop_id}")
             return True
         except requests.RequestException as e:
-            error_msg = f"接続の確立に失敗: url={url}, params={params}, エラー: {str(e)}"
+            error_msg = f"接続確立に失敗: url={url}, params={params}, エラー: {str(e)}"
+            logger.error(error_msg)
+            raise StudioScraperError(error_msg) from e
+        except Exception as e:
+            error_msg = f"接続確立で予期せぬエラーが発生: url={url}, params={params}, エラー: {str(e)}"
             logger.error(error_msg)
             raise StudioScraperError(error_msg) from e
 
@@ -120,7 +124,47 @@ class PadStudioScraper(StudioScraperStrategy):
         Raises:
             StudioScraperError: スケジュールデータの取得に失敗した場合
         """
-        logger.info(f"予約可能時間の取得を開始: date={target_date}")
+        logger.info(f"予約可能時間の取得を開始: date={target_date.isoformat()}")
+        
+        try:
+            # スケジュールページの取得
+            schedule_data = self._get_schedule_page(target_date)
+            if not schedule_data:
+                logger.warning(f"スケジュールデータが空: date={target_date.isoformat()}")
+                return []
+            
+            # 予約可能時間の抽出
+            availabilities = self._extract_availabilities(schedule_data, target_date)
+            
+            # 結果をJSONとしてログに出力
+            result_json = [
+                {
+                    "room_name": avail.room_name,
+                    "date": avail.date.isoformat(),
+                    "time_slots": [
+                        {
+                            "start_time": slot.start_time.strftime("%H:%M"),
+                            "end_time": slot.end_time.strftime("%H:%M")
+                        }
+                        for slot in avail.time_slots
+                    ],
+                    "start_minutes": avail.start_minutes,
+                    "allows_thirty_minute_slots": avail.allows_thirty_minute_slots
+                }
+                for avail in availabilities
+            ]
+            
+            logger.info(f"予約可能時間の取得が完了: 件数={len(availabilities)}")
+            logger.debug(f"取得した予約可能時間: {json.dumps(result_json, indent=2, ensure_ascii=False)}")
+            return availabilities
+            
+        except Exception as e:
+            logger.error(f"予約可能時間の取得に失敗: date={target_date.isoformat()}, エラー: {str(e)}")
+            raise
+
+    def _get_schedule_page(self, target_date: date) -> Optional[str]:
+        """スケジュールページを取得"""
+        logger.info(f"スケジュールページの取得を開始: date={target_date.isoformat()}")
         url = f"{self.BASE_URL}/member_select.php"
         logger.debug(f"スケジュールURL: {url}")
         
@@ -131,13 +175,9 @@ class PadStudioScraper(StudioScraperStrategy):
             logger.info("スケジュールページの取得を開始")
             response = self._fetch_schedule_page(url, data)
             logger.debug(f"レスポンスステータス: {response.status_code}")
-            
-            logger.info("スケジュールページの解析を開始")
-            result = self._parse_schedule_page(response.text, target_date)
-            logger.info(f"予約可能時間の取得が完了: 件数={len(result)}")
-            return result
+            return response.text
         except requests.RequestException as e:
-            error_msg = f"スケジュールデータの取得に失敗: url={url}, date={target_date}, エラー: {str(e)}"
+            error_msg = f"スケジュールページの取得に失敗: url={url}, date={target_date.isoformat()}, エラー: {str(e)}"
             logger.error(error_msg)
             raise StudioScraperError(error_msg) from e
 
@@ -176,7 +216,7 @@ class PadStudioScraper(StudioScraperStrategy):
                 logger.error(error_msg)
                 raise StudioScraperError(error_msg)
             
-            logger.debug(f"レスポンスステータス: {response.status_code}")
+            logger.info(f"レスポンスステータス: {response.status_code}")
             logger.info("スケジュールページの取得が完了")
             return response
         except requests.RequestException as e:
@@ -184,18 +224,14 @@ class PadStudioScraper(StudioScraperStrategy):
             logger.error(error_msg)
             raise StudioScraperError(error_msg) from e
 
-    def _parse_schedule_page(
-        self,
-        html_content: str,
-        target_date: date
-    ) -> List[StudioAvailability]:
+    def _extract_availabilities(self, schedule_data: str, target_date: date) -> List[StudioAvailability]:
         """スケジュールページをパースして利用可能時間を抽出"""
         logger.info("スケジュールページの解析を開始")
         logger.debug(f"対象日付: {target_date}")
-        logger.debug(f"HTMLコンテンツの長さ: {len(html_content)} bytes")
+        logger.debug(f"HTMLコンテンツの長さ: {len(schedule_data)} bytes")
         
         try:
-            soup = BeautifulSoup(html_content, 'html.parser')
+            soup = BeautifulSoup(schedule_data, 'html.parser')
             schedule_table = self._find_schedule_table(soup)
             
             if not schedule_table:
@@ -281,6 +317,7 @@ class PadStudioScraper(StudioScraperStrategy):
                 )
                 logger.debug(f"スタジオ {studio_name} の利用可能枠を追加: 件数={len(available_slots)}")
                 
+        logger.info(f"予約可能時間の取得結果: {len(studio_availabilities)}件")
         return studio_availabilities
 
     def _get_studio_name(self, row: BeautifulSoup) -> Optional[str]:
@@ -337,6 +374,7 @@ class PadStudioScraper(StudioScraperStrategy):
                 )
             )
         
+        logger.debug(f"利用可能時間枠数: {len(available_slots)}")
         return available_slots
 
     def _is_available_slot(self, cell: BeautifulSoup) -> bool:

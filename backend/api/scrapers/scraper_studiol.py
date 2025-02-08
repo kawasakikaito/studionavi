@@ -33,19 +33,23 @@ class StudiolScraper(StudioScraperStrategy):
         self.room_name_map: Dict[str, str] = {}
         self.start_minutes_map: Dict[str, List[int]] = {}  # 複数の開始時刻を管理
         self.thirty_minute_slots_map: Dict[str, bool] = {}
+        
+        logger.debug(f"初期化パラメータ: base_url={self.BASE_URL}")
+        logger.info("StudiolScraperの初期化が完了")
 
     def establish_connection(self, shop_id: str) -> bool:
         """予約システムへの接続を確立し、トークンを取得する"""
         try:
             token = self._fetch_token(shop_id)
             self._set_connection_info(shop_id, token)
-            logger.info(f"接続を確立しました: shop_id={shop_id}")
+            logger.info(f"接続確立を開始: shop_id={shop_id}")
+            logger.info(f"接続確立が完了: shop_id={shop_id}")
             return True
-            
         except StudioScraperError:
+            logger.error(f"接続確立に失敗: shop_id={shop_id}")
             raise
         except Exception as e:
-            logger.error(f"接続の確立に失敗: {str(e)}")
+            logger.error(f"接続確立で予期せぬエラーが発生: shop_id={shop_id}, エラー: {str(e)}")
             raise StudioScraperError("接続の確立に失敗しました") from e
 
     def _fetch_token(self, shop_id: str) -> str:
@@ -232,6 +236,25 @@ class StudiolScraper(StudioScraperStrategy):
             )
             logger.debug(f"スタジオ {room_name} の利用可能枠: {len(merged_slots)}個")
         
+        logger.info(f"予約可能時間の取得結果: {len(studio_availabilities)}件")
+        # 結果をJSONとしてログに出力
+        result_json = [
+            {
+                "room_name": avail.room_name,
+                "date": avail.date.isoformat(),
+                "time_slots": [
+                    {
+                        "start_time": slot.start_time.strftime("%H:%M"),
+                        "end_time": slot.end_time.strftime("%H:%M")
+                    }
+                    for slot in avail.time_slots
+                ],
+                "start_minutes": avail.start_minutes,
+                "allows_thirty_minute_slots": avail.allows_thirty_minute_slots
+            }
+            for avail in studio_availabilities
+        ]
+        logger.info(f"取得した予約可能時間: {json.dumps(result_json, indent=2, ensure_ascii=False)}")
         return studio_availabilities
 
     def _merge_consecutive_slots(self, time_slots: List[datetime]) -> List[StudioTimeSlot]:
@@ -282,6 +305,24 @@ class StudiolScraper(StudioScraperStrategy):
             start_time=start_time,
             end_time=end_time
         )
+
+    def _get_studio_info(self) -> requests.Response:
+        """スタジオ情報を取得"""
+        try:
+            url = f"{self.BASE_URL}/studio/info/{self.shop_id}"
+            logger.info(f"スタジオ情報の取得を開始: url={url}")
+            
+            response = self.session.get(url)
+            response.raise_for_status()
+            
+            logger.debug(f"レスポンスステータス: {response.status_code}")
+            logger.info("スタジオ情報の取得が完了")
+            return response
+            
+        except requests.RequestException as e:
+            error_msg = f"スタジオ情報の取得に失敗: url={url}, エラー: {str(e)}"
+            logger.error(error_msg)
+            raise StudioScraperError(error_msg) from e
 
 def register(registry: ScraperRegistry) -> None:
     """Studiolスクレイパーの登録"""
