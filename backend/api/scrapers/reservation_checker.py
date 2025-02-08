@@ -130,10 +130,23 @@ class AvailabilityChecker:
         return datetime.combine(d, t)
 
     def _to_minutes(self, t: time, is_end_time: bool = False) -> int:
-        """時刻を分単位に変換"""
+        """時刻を分単位に変換
+        
+        Args:
+            t: 変換する時刻
+            is_end_time: 終了時刻として扱うかどうか
+            
+        Returns:
+            int: 分単位の時間
+            
+        Note:
+            - 終了時刻の00:00は24:00として扱う
+            - 終了時刻の23:59は24:00として扱う
+        """
         minutes = t.hour * 60 + t.minute
-        if minutes == 0 and is_end_time:  # 終了時刻の00:00のみ24:00として扱う
-            return 24 * 60
+        if is_end_time:
+            if minutes == 0 or (t.hour == 23 and t.minute == 59):
+                return 24 * 60
         return minutes
 
     def filter_slots_in_range(
@@ -283,7 +296,17 @@ class AvailabilityChecker:
         return sorted(availabilities, key=lambda x: x.room_name)
 
     def _merge_overlapping_slots(self, slots: Set[StudioTimeSlot]) -> List[StudioTimeSlot]:
-        """重複または連続する時間枠をマージ"""
+        """重複または連続する時間枠をマージ
+        
+        連続する時間枠は、時間の長さに関係なくマージします。
+        23:59で終わる時間枠は24:00として扱い、適切にマージします。
+        
+        Args:
+            slots: マージ対象の時間枠セット
+            
+        Returns:
+            List[StudioTimeSlot]: マージされた時間枠のリスト
+        """
         if not slots:
             return []
         
@@ -294,7 +317,6 @@ class AvailabilityChecker:
         
         merged = []
         current = sorted_slots[0]
-        current_start = self._to_minutes(current.start_time, False)
         
         for next_slot in sorted_slots[1:]:
             # 時間を分に変換して比較
@@ -302,12 +324,9 @@ class AvailabilityChecker:
             next_start = self._to_minutes(next_slot.start_time, False)
             next_end = self._to_minutes(next_slot.end_time, True)
             
-            # 時間枠が重なるか連続している場合、または
-            # 連続する短い時間枠（1時間未満）の場合はマージ
-            if next_start <= current_end or (
-                next_start == current_end and 
-                next_start - current_start < 60  # 1時間未満の場合
-            ):
+            # 時間枠が重なるか連続している場合はマージ
+            # 1時間未満の制限を削除
+            if next_start <= current_end or next_start == current_end:
                 # 終了時刻を更新
                 if next_end > current_end:
                     current = StudioTimeSlot(
@@ -317,7 +336,6 @@ class AvailabilityChecker:
             else:
                 merged.append(current)
                 current = next_slot
-                current_start = self._to_minutes(current.start_time, False)
         
         merged.append(current)
         logger.debug(f"マージ後の時間枠: {[f'{s.start_time.strftime('%H:%M')}-{s.end_time.strftime('%H:%M')}' for s in merged]}")
