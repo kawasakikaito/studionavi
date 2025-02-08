@@ -407,15 +407,18 @@ class Studio246Scraper(StudioScraperStrategy):
         # 現在時刻を分単位に変換し、予約枠の時間を加算
         total_minutes = hour * 60 + minute + self._time_slot_minutes
         
-        # 分単位から時と分に変換
-        end_hour = (total_minutes // 60) % 24
+        # 分単位から時と分に変換（24時以降も許容）
+        end_hour = total_minutes // 60  # 24で割らない
         end_minute = total_minutes % 60
         
-        end_time = time(hour=end_hour, minute=end_minute)
+        # 24時以降の場合は24時として扱う
+        if end_hour >= 24:
+            end_hour = 24
+            end_minute = 0
+            end_time = time(hour=23, minute=59, second=59)
+        else:
+            end_time = time(hour=end_hour, minute=end_minute)
         
-        if end_time <= current_time:
-            raise ValueError(f"開始時刻({current_time})は終了時刻({end_time})より前である必要があります")
-            
         return current_time, end_time
 
     def _create_availability_list(
