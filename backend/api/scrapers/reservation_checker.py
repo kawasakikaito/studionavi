@@ -154,7 +154,8 @@ class AvailabilityChecker:
         slots: List[StudioTimeSlot],
         desired_range: TimeRange,
         min_duration_minutes: int,
-        start_minute: int
+        start_minute: int,
+        allows_thirty_minute_slots: bool
     ) -> Set[StudioTimeSlot]:
         """指定された時間範囲内の時間枠をフィルタリング"""
         filtered = set()
@@ -204,6 +205,14 @@ class AvailabilityChecker:
             available_duration = actual_end - adjusted_start
             logger.debug(f"利用可能時間: {available_duration}分")
             
+            # 30分単位での予約が不可能な場合、1時間単位に制限
+            if not allows_thirty_minute_slots and available_duration % 60 != 0:
+                logger.debug("→ 30分単位での予約が不可能なため、1時間単位に調整")
+                available_duration = (available_duration // 60) * 60
+                actual_end = adjusted_start + available_duration
+                logger.debug(f"調整後の利用可能時間: {available_duration}分")
+                logger.debug(f"調整後の終了時刻: {actual_end}分 ({actual_end//60}:{actual_end%60:02d})")
+
             # 30分単位での予約が可能な場合、開始時刻の調整を許容
             if available_duration >= min_duration_minutes and (
                 adjusted_start % 60 == start_minute  # 開始時刻が指定された分に合致
@@ -271,7 +280,8 @@ class AvailabilityChecker:
                     merged_slots,  # マージ済みの時間枠を使用
                     desired_range,
                     min_duration_minutes,
-                    start_minute
+                    start_minute,
+                    allows_thirty_minute_slots
                 )
                 all_valid_slots.update(valid_slots)
                 logger.debug(f"開始時刻 {start_minute}分の有効な時間枠: {len(valid_slots)}個")
