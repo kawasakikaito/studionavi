@@ -1,16 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist", // ビルド出力先ディレクトリ
-    "module": "ESNext", // 使用するモジュール形式
-    "target": "ES2016", // トランスパイルのターゲット
-    "jsx": "react-jsx", // React用のJSX設定
-    "strict": true, // 厳格モード
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "outDir": "./dist",
+    "composite": true,
+    "strict": true
   },
-  "include": ["src/**/*"], // `src` 内のすべてのファイルを含む
-  "exclude": ["node_modules", "dist"] // 除外ディレクトリ
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
