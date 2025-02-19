@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 def setup_logger(name: str, log_dir: Path = Path("logs")) -> logging.Logger:
@@ -24,9 +25,14 @@ def setup_logger(name: str, log_dir: Path = Path("logs")) -> logging.Logger:
     # ログディレクトリの作成
     log_dir.mkdir(exist_ok=True)
     
-    # ファイルハンドラーの設定
-    file_handler = logging.FileHandler(
-        log_dir / f"{name.split('.')[-1]}.log",
+    # ログファイルのパス
+    log_file = log_dir / f"{name.split('.')[-1]}.log"
+    
+    # ローテーションファイルハンドラーの設定
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
         encoding='utf-8'
     )
     file_handler.setLevel(logging.DEBUG)
@@ -39,5 +45,8 @@ def setup_logger(name: str, log_dir: Path = Path("logs")) -> logging.Logger:
     
     # ハンドラーの追加
     logger.addHandler(file_handler)
+    
+    # 初期化ログ
+    logger.info(f"ロガーを初期化: name={name}, log_file={log_file}")
     
     return logger
