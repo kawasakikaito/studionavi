@@ -36,6 +36,8 @@ db.sqlite3
 
 # 環境変数ファイル
 .env
+.env.*
+!.env.example
 
 # Logs
 logs
