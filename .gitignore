@@ -53,3 +53,6 @@ dist-ssr
 *.local
 
 .windsurfrules
+
+# バックアップファイル
+*.backup
