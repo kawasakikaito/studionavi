@@ -117,8 +117,12 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME':  Path(os.environ.get('DATABASE_URL').split('sqlite:///')[-1]),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DB_NAME', 'studionavi'),
+        'USER': os.environ.get('DB_USER', 'studionavi'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': os.environ.get('DB_HOST', 'db'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 

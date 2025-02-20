@@ -7,9 +7,10 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - ./backend/db.sqlite3:/app/db.sqlite3
     environment:
       - PYTHONUNBUFFERED=1
+    depends_on:
+      - db
 
   frontend:
     build:
@@ -24,3 +25,27 @@ services:
       - backend
     environment:
       - VITE_API_BASE_URL=http://localhost:8000
+
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=studionavi
+      - POSTGRES_USER=studionavi
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "5433:5432"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@studionavi.com
+      - PGADMIN_DEFAULT_PASSWORD=studionavi
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
