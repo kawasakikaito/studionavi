@@ -56,5 +56,8 @@ dist-ssr
 
 .windsurfrules
 
+# Docker関連
+docker-cheatsheet.md
+
 # バックアップファイル
 *.backup
