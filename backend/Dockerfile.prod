@@ -1,0 +1,49 @@
+# ビルドステージ
+FROM python:3.12-slim as builder
+
+# 環境変数を設定
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# 作業ディレクトリを設定
+WORKDIR /app
+
+# システム依存関係をインストール
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python依存関係をインストール
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 本番環境用の依存関係を追加
+RUN pip install --no-cache-dir gunicorn
+
+# 実行ステージ
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# 必要なシステムパッケージのみインストール
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ビルドステージから必要なファイルをコピー
+COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+# アプリケーションコードをコピー
+COPY . .
+
+# 静的ファイルを収集
+RUN python manage.py collectstatic --noinput
+
+# 実行時の設定
+ENV DJANGO_SETTINGS_MODULE=config.settings.production
+EXPOSE 8000
+
+# Gunicornで実行
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "config.wsgi:application"]

@@ -1,0 +1,32 @@
+# ビルドステージ
+FROM node:18-alpine as builder
+
+# 作業ディレクトリを設定
+WORKDIR /app
+
+# 依存関係ファイルをコピー
+COPY package*.json ./
+
+# 依存関係をインストール
+RUN npm ci
+
+# ソースコードをコピー
+COPY . .
+
+# 本番用ビルドを実行
+RUN npm run build
+
+# 実行ステージ
+FROM nginx:alpine
+
+# Nginxの設定ファイルをコピー
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# ビルドしたファイルをNginxのドキュメントルートにコピー
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# ポート80を公開
+EXPOSE 80
+
+# Nginxを起動
+CMD ["nginx", "-g", "daemon off;"]
