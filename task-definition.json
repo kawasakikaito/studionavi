@@ -1,0 +1,79 @@
+{
+    "containerDefinitions": [
+        {
+            "name": "backend",
+            "image": "717279708380.dkr.ecr.ap-northeast-1.amazonaws.com/studionavi-backend:latest",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "containerPort": 8000,
+                    "hostPort": 8000,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "DJANGO_SETTINGS_MODULE",
+                    "value": "config.settings.production"
+                }
+            ],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "secrets": [
+                {
+                    "name": "DATABASE_URL",
+                    "valueFrom": "arn:aws:ssm:ap-northeast-1:717279708380:parameter/studionavi/database_url"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/studionavi",
+                    "awslogs-region": "ap-northeast-1",
+                    "awslogs-stream-prefix": "backend"
+                }
+            },
+            "systemControls": []
+        },
+        {
+            "name": "frontend",
+            "image": "717279708380.dkr.ecr.ap-northeast-1.amazonaws.com/studionavi-frontend:latest",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "containerPort": 80,
+                    "hostPort": 80,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/studionavi",
+                    "awslogs-region": "ap-northeast-1",
+                    "awslogs-stream-prefix": "frontend"
+                }
+            },
+            "systemControls": []
+        }
+    ],
+    "family": "studionavi",
+    "taskRoleArn": "arn:aws:iam::717279708380:role/ecsTaskRole",
+    "executionRoleArn": "arn:aws:iam::717279708380:role/ecsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "volumes": [],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "runtimePlatform": {
+        "cpuArchitecture": "X86_64",
+        "operatingSystemFamily": "LINUX"
+    }
+}
