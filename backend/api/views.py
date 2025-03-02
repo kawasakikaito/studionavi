@@ -3,7 +3,7 @@ from typing import Optional
 from django.db.models import Q, Case, When, Value, FloatField
 from django.db.models.functions import Greatest
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from api.scrapers.scraper_registry import AvailabilityService
@@ -15,6 +15,17 @@ from .serializers import (
     AnalyzedStudioSerializer
 )
 from config.studio_config import STUDIO_CONFIGS, ScraperConfig
+
+
+@api_view(['GET'])
+def health_check(request):
+    """
+    ヘルスチェックエンドポイント
+    ALBのヘルスチェックに対応するため、HTTPSリダイレクトを回避
+    """
+    # シンプルなテキストレスポンスを返す（JSONではなく）
+    from django.http import HttpResponse
+    return HttpResponse('ok', content_type='text/plain')
 
 
 class TodoViewSet(viewsets.ModelViewSet):
