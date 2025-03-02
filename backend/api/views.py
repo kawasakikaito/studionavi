@@ -20,12 +20,11 @@ from config.studio_config import STUDIO_CONFIGS, ScraperConfig
 @api_view(['GET'])
 def health_check(request):
     """
-    ヘルスチェックエンドポイント
-    ALBのヘルスチェックに対応するため、HTTPSリダイレクトを回避
+    簡単なヘルスチェックエンドポイント - いつも200応答
+    ALBヘルスチェック用
     """
-    # シンプルなテキストレスポンスを返す（JSONではなく）
     from django.http import HttpResponse
-    return HttpResponse('ok', content_type='text/plain')
+    return HttpResponse('ok', content_type='text/plain', status=200)
 
 
 class TodoViewSet(viewsets.ModelViewSet):

@@ -18,10 +18,22 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from api.views import health_check
+from django.http import HttpResponse
+
+# ルートパスのヘルスチェック
+def root_health_check(request):
+    return HttpResponse('ok', content_type='text/plain', status=200)
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # ルートパスをヘルスチェックに
+    path('', root_health_check, name='root_path'),
+    # ヘルスチェックエンドポイント
+    path('health', health_check, name='root_health_check_no_slash'),
+    path('health/', health_check, name='root_health_check'),
+    # 通常のAPIルート
     path('api/', include('api.urls')),
+    path('admin/', admin.site.urls),
 ]
 
 if settings.DEBUG:
