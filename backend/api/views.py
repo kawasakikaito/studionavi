@@ -17,6 +17,7 @@ from .serializers import (
 from config.studio_config import STUDIO_CONFIGS, ScraperConfig
 
 
+# 単純なヘルスチェックビュー
 @api_view(['GET'])
 def health_check(request):
     """
