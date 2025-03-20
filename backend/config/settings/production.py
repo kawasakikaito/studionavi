@@ -6,20 +6,85 @@ DEBUG = False
 # 本番環境用の設定
 ALLOWED_HOSTS = ['*']  # 後で適切なドメインに制限する
 
+# CORS設定
+CORS_ALLOW_ALL_ORIGINS = False  # 全てのオリジンを許可しない
+CORS_ALLOWED_ORIGINS = [
+    "http://studionavi-alb-837030228.ap-northeast-1.elb.amazonaws.com",
+    "https://studionavi-alb-837030228.ap-northeast-1.elb.amazonaws.com",
+    # 必要に応じて他のオリジンを追加
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# corsheadersはすでにbase.pyのTHIRD_PARTY_APPSに含まれているため、ここでは追加しない
+# ミドルウェアの設定
+# DisableSSLRedirectMiddlewareをSecurityMiddlewareの前に配置
+MIDDLEWARE = [
+    'api.middleware.DisableSSLRedirectMiddleware',  # HTTPSリダイレクトを無効化
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'api.middleware.HealthCheckMiddleware',  # ヘルスチェック用ミドルウェア
+]
+
 # 静的ファイルの設定
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
 # セキュリティ設定
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# HTTPSリダイレクトを無効化
+SECURE_SSL_REDIRECT = False
+SECURE_REDIRECT_EXEMPT = ['*']  # すべてのパスを除外
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
-# ヘルスチェックエンドポイントではHTTPSリダイレクトを無効化
-SECURE_REDIRECT_EXEMPT = [r'^api/health/$', r'^api/health$']
+# SSL/HTTPS settings
+# SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # HTTPSが設定されていないためコメントアウト
+
+# リダイレクトから除外するパス（ヘルスチェック用）
+SECURE_REDIRECT_EXEMPT = [
+    r"^health/?$",
+    r"^api/health/?$",
+    r"^health$",
+    r"^api/health$",
+    r"^api/?$",  # APIルートも除外
+    r"^api/.*$",  # APIパスすべてを除外
+]
+
+# URLの末尾スラッシュリダイレクトを無効化（ヘルスチェック用）
+APPEND_SLASH = False
+
+# HTTPSリダイレクトを無効化するための追加設定
+SECURE_REDIRECT_EXEMPT = ['.*']  # すべてのパスを除外
 
 # データベース設定
 import dj_database_url
@@ -87,9 +152,6 @@ LOGGING = {
         'level': 'INFO',
     },
 }
-
-# URLの末尾スラッシュリダイレクトを無効化（ヘルスチェック用）
-APPEND_SLASH = False
 
 # データベース接続情報をログに出力
 import logging
