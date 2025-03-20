@@ -46,6 +46,9 @@ python manage.py shell -c "from django.contrib.auth import get_user_model; User 
 echo "マイグレーションが完了しました"\n\
 ' > /app/migrate.sh && chmod +x /app/migrate.sh
 
+# ルートディレクトリにシンボリックリンクを作成
+RUN ln -sf /app/migrate.sh /migrate.sh
+
 # SQLiteデータベース用のボリュームを作成
 VOLUME /app/db
 
