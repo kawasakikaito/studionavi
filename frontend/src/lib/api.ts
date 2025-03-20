@@ -8,13 +8,22 @@ function getCookie(name: string): string | null {
   return null;
 }
 
+// 環境変数からAPIのベースURLを取得、なければデフォルト値を使用
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://studionavi-alb-837030228.ap-northeast-1.elb.amazonaws.com/api";
+
 const api = axios.create({
-  baseURL: "http://localhost:8000/api",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
     "X-CSRFToken": getCookie("csrftoken") || "",
   },
   withCredentials: true, // CSRF tokenのために必要
+});
+
+// デバッグ用：APIの設定情報をログに出力
+console.log("API設定:", {
+  baseURL: API_BASE_URL,
+  environment: import.meta.env.MODE || "development"
 });
 
 // リクエストインターセプターでCSRFトークンを更新
