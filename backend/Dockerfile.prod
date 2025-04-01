@@ -38,6 +38,9 @@ COPY --from=builder /usr/local/bin/ /usr/local/bin/
 # アプリケーションコードをコピー
 COPY . .
 
+# .env.productionファイルを.envとしてコピー
+RUN if [ -f .env.production ]; then cp .env.production .env; fi
+
 # staticfilesディレクトリを作成
 RUN mkdir -p staticfiles
 
@@ -46,6 +49,7 @@ RUN DJANGO_SETTINGS_MODULE=config.settings.production python manage.py collectst
 
 # 実行時の設定
 ENV DJANGO_SETTINGS_MODULE=config.settings.production
+ENV DJANGO_ENVIRONMENT=production
 EXPOSE 8000
 
 # Gunicornで実行

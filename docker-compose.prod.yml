@@ -7,6 +7,7 @@ services:
       dockerfile: Dockerfile.prod
     restart: unless-stopped
     environment:
+      - DJANGO_ENVIRONMENT=production
       - DJANGO_SETTINGS_MODULE=config.settings.production
       - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
     depends_on:
