@@ -17,29 +17,26 @@ import json
 logger = setup_logger(__name__)
 
 class PadStudioScraper(StudioScraperStrategy):
-    """padstudioの予約システムに対応するスクレイパー実装"""
+    """PADスタジオ予約システム用のスクレイパー"""
     
+    # 基本URL
     BASE_URL = "https://www.reserve1.jp/studio/member"
-    MAX_RETRIES = 3
-    MIN_WAIT = 4
-    MAX_WAIT = 10
-    TIME_SLOT_DURATION = 1800  # 30分（秒）
+    
+    # 予約システムの識別子
+    SYSTEM_ID = "pad_studio"
     
     def __init__(self):
-        """初期化処理"""
+        """スクレイパーの初期化"""
         logger.info("PadStudioScraperの初期化を開始")
-        super().__init__()
+        self.session = None
+        self.shop_id = None
         
-        # 基本設定
-        self._token: Optional[str] = None
-        self.shop_id: Optional[str] = None
-        
-        # スタジオ情報のマッピング
-        self.room_name_map: Dict[str, str] = {}
-        self.start_minutes_map: Dict[str, List[int]] = {}  # 複数の開始時刻を管理
-        self.thirty_minute_slots_map: Dict[str, bool] = {}
-        
+        # 基本URLのログ出力
         logger.debug(f"base_url: {self.BASE_URL}")
+        
+        # 現在のURLが有効かどうかを確認するためのログ
+        logger.debug(f"予約システムのトップページURL: {self.BASE_URL}/index.php")
+        
         logger.info("PadStudioScraperの初期化が完了")
 
     def establish_connection(self, shop_id: Optional[str] = None) -> bool:
@@ -54,34 +51,66 @@ class PadStudioScraper(StudioScraperStrategy):
         Raises:
             StudioScraperError: 接続に失敗した場合
         """
-        logger.info(f"接続確立を開始: shop_id={shop_id}")
-        url = f"{self.BASE_URL}/VisitorLogin.php"
-        logger.debug(f"接続URL: {url}")
+        logger.info(f"PADスタジオへの接続を開始: shop_id={shop_id}")
+        self.shop_id = shop_id
         
+        # セッションの初期化
+        self.session = requests.Session()
+        
+        # 接続パラメータの準備
         params = self._prepare_connection_params()
-        logger.debug(f"接続パラメータ: {params}")
         
         try:
-            self._make_connection_request(url, params)
-            logger.info(f"接続確立が完了: shop_id={shop_id}")
+            # 接続リクエストの実行
+            # 正しいURLを使用
+            url = f"{self.BASE_URL}/VisitorLogin.php"
+            logger.debug(f"接続URL: {url}")
+            logger.debug(f"接続パラメータ: {params}")
+            
+            # 実際のリクエストを送信
+            logger.info("接続リクエストの実行を開始")
+            logger.debug(f"リクエストURL: {url}")
+            logger.debug(f"リクエストパラメータ: {params}")
+            
+            response = self._make_connection_request(url, params)
+            
+            # レスポンスの検証
+            if not response.text:
+                logger.error("接続レスポンスが空です")
+                return False
+                
+            # デバッグ用：レスポンスの一部をログに出力
+            logger.debug(f"レスポンスの長さ: {len(response.text)} bytes")
+            logger.debug(f"レスポンスの一部: {response.text[:200]}...")
+                
+            logger.info("PADスタジオへの接続が成功しました")
             return True
-        except requests.RequestException as e:
-            error_msg = f"接続確立に失敗: url={url}, params={params}, エラー: {str(e)}"
-            logger.error(error_msg)
-            raise StudioScraperError(error_msg) from e
         except Exception as e:
-            error_msg = f"接続確立で予期せぬエラーが発生: url={url}, params={params}, エラー: {str(e)}"
-            logger.error(error_msg)
-            raise StudioScraperError(error_msg) from e
+            logger.error(f"PADスタジオへの接続に失敗: {str(e)}")
+            raise StudioScraperError(f"PADスタジオへの接続に失敗: {str(e)}") from e
 
     def _prepare_connection_params(self) -> Dict[str, str]:
         """接続用のパラメータを準備"""
         logger.info("接続パラメータの準備を開始")
-        params = {
-            "lc": "olsccsvld",
-            "mn": "3",
-            "gr": "1"
+        
+        # 以前のパラメータ
+        old_params = {
+            'lc': 'olsccsvld',
+            'mn': '3',
+            'gr': '1'
         }
+        
+        # 新しいパラメータも試す
+        new_params = {
+            'lc': 'olsccsvld',
+            'mn': '3',
+            'gr': '1',
+            'office': '1480320'  # 追加のパラメータ
+        }
+        
+        # 使用するパラメータ
+        params = old_params
+        
         logger.debug(f"準備された接続パラメータ: {params}")
         logger.info("接続パラメータの準備が完了")
         return params
@@ -124,16 +153,27 @@ class PadStudioScraper(StudioScraperStrategy):
         Raises:
             StudioScraperError: スケジュールデータの取得に失敗した場合
         """
-        logger.info(f"予約可能時間の取得を開始: date={target_date.isoformat()}")
+        logger.info(f"PADスタジオの予約可能時間の取得を開始: date={target_date.isoformat()}")
         
         try:
+            # セッションの状態を確認
+            if not hasattr(self, 'session') or self.session is None:
+                logger.error("セッションが初期化されていません。establish_connectionが正常に実行されていない可能性があります。")
+                self.establish_connection(self.shop_id)
+                
             # スケジュールページの取得
+            logger.debug("スケジュールページの取得を開始します")
             schedule_data = self._get_schedule_page(target_date)
             if not schedule_data:
                 logger.warning(f"スケジュールデータが空: date={target_date.isoformat()}")
                 return []
             
+            # デバッグ用：スケジュールデータの一部をログに出力
+            logger.debug(f"スケジュールデータの長さ: {len(schedule_data)} bytes")
+            logger.debug(f"スケジュールデータの一部: {schedule_data[:200]}...")
+            
             # 予約可能時間の抽出
+            logger.debug("予約可能時間の抽出を開始します")
             availabilities = self._extract_availabilities(schedule_data, target_date)
             
             # 結果をJSONとしてログに出力
@@ -154,12 +194,15 @@ class PadStudioScraper(StudioScraperStrategy):
                 for avail in availabilities
             ]
             
-            logger.info(f"予約可能時間の取得が完了: 件数={len(availabilities)}")
+            logger.info(f"PADスタジオの予約可能時間の取得が完了: 件数={len(availabilities)}")
             logger.debug(f"取得した予約可能時間: {json.dumps(result_json, indent=2, ensure_ascii=False)}")
             return availabilities
             
         except Exception as e:
-            logger.error(f"予約可能時間の取得に失敗: date={target_date.isoformat()}, エラー: {str(e)}")
+            logger.error(f"PADスタジオの予約可能時間の取得に失敗: date={target_date.isoformat()}, エラー: {str(e)}")
+            logger.error(f"エラーの詳細: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(f"スタックトレース: {traceback.format_exc()}")
             raise
 
     def _get_schedule_page(self, target_date: date) -> Optional[str]:
@@ -269,18 +312,28 @@ class PadStudioScraper(StudioScraperStrategy):
             time_cells = first_row.find_all('td', {'class': 'item_base'})
             logger.debug(f"時間セル数: {len(time_cells)}")
             
-            for cell in time_cells:
+            # デバッグ用：最初の行のHTMLを出力
+            logger.debug(f"最初の行のHTML: {first_row}")
+            
+            for i, cell in enumerate(time_cells):
                 text = ' '.join(cell.stripped_strings)
+                logger.debug(f"セル {i} のテキスト: '{text}'")
+                
                 if text and '~' in text:
                     start_str, end_str = map(str.strip, text.split('~'))
+                    logger.debug(f"時間文字列: 開始={start_str}, 終了={end_str}")
+                    
                     try:
                         start_time = self._parse_time(start_str)
                         end_time = self._parse_time(end_str)
                         if start_time and end_time:
                             time_slots.append((start_time, end_time))
-                    except ValueError:
-                        logger.warning(f"時間のパースに失敗: {text}")
+                            logger.debug(f"時間枠を追加: {start_time} - {end_time}")
+                    except ValueError as e:
+                        logger.warning(f"時間のパースに失敗: {text}, エラー: {str(e)}")
                         continue
+                else:
+                    logger.warning(f"時間形式が不正: '{text}'")
                     
         logger.debug(f"抽出された時間枠: {len(time_slots)}個")
         return time_slots
