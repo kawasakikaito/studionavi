@@ -1,5 +1,5 @@
-# 公式のNode.jsイメージを使用
-FROM node:18-alpine
+# ビルドステージ
+FROM node:18-alpine AS build
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -13,8 +13,20 @@ RUN npm install
 # frontendのコードをコピー
 COPY . /app
 
-# アプリが実行されるポートを公開
-EXPOSE 3000
+# アプリケーションをビルド
+RUN npm run build
 
-# アプリケーションを開発モードで実行
-CMD ["npm", "run", "dev", "--", "--host"]
+# 実行ステージ
+FROM nginx:alpine
+
+# Nginxの設定ファイルをコピー
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# ビルドステージからビルド済みのファイルをコピー
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# ポート80を公開
+EXPOSE 80
+
+# Nginxを起動
+CMD ["nginx", "-g", "daemon off;"]
