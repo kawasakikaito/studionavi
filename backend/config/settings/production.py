@@ -10,10 +10,22 @@ ALLOWED_HOSTS = ['*']  # 後で適切なドメインに制限する
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
+# CORS設定
+CORS_ALLOWED_ORIGINS = [
+    'http://studionavi-alb-837030228.ap-northeast-1.elb.amazonaws.com',
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://studionavi-alb-837030228.ap-northeast-1.elb.amazonaws.com',
+]
+
+# すべてのオリジンからのリクエストを許可（一時的な対応）
+CORS_ALLOW_ALL_ORIGINS = True
+
 # セキュリティ設定
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = False  # HTTPSリダイレクトを無効化（一時的な対応）
+SESSION_COOKIE_SECURE = False  # HTTPでもCookieを使用可能に（一時的な対応）
+CSRF_COOKIE_SECURE = False  # HTTPでもCSRFトークンを使用可能に（一時的な対応）
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
