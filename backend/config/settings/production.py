@@ -22,10 +22,27 @@ CSRF_TRUSTED_ORIGINS = [
 # すべてのオリジンからのリクエストを許可（一時的な対応）
 CORS_ALLOW_ALL_ORIGINS = True
 
-# セキュリティ設定
+# カスタムミドルウェアを追加
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'api.middleware.DisableHttpsRedirectMiddleware',  # HTTPSリダイレクト無効化ミドルウェアを追加
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+# セキュリティ設定 - HTTPSリダイレクトを確実に無効化
+SECURE_PROXY_SSL_HEADER = None
 SECURE_SSL_REDIRECT = False  # HTTPSリダイレクトを無効化（一時的な対応）
 SESSION_COOKIE_SECURE = False  # HTTPでもCookieを使用可能に（一時的な対応）
 CSRF_COOKIE_SECURE = False  # HTTPでもCSRFトークンを使用可能に（一時的な対応）
+SECURE_HSTS_SECONDS = 0  # HSTSを無効化（一時的な対応）
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
@@ -54,5 +71,17 @@ LOGGING = {
     'root': {
         'handlers': ['console'],
         'level': 'INFO',
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'DEBUG',  # リクエスト処理の詳細なログを出力
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['console'],
+            'level': 'DEBUG',  # セキュリティ関連の詳細なログを出力
+            'propagate': False,
+        },
     },
 }
