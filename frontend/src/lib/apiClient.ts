@@ -26,9 +26,10 @@ console.log("パス:", window.location.pathname);
 console.log("完全なURL:", window.location.href);
 console.log("=================");
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD 
-  ? "/api" 
-  : "http://127.0.0.1:8000/api");
+// 本番環境では相対パスを使用し、開発環境では絶対URLを使用
+// 本番環境ではNginxがプロキシするので、/apiに送信するだけでよい
+const baseURL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8000/api");
 
 console.log("最終的に使用するbaseURL:", baseURL);
 
@@ -38,6 +39,8 @@ const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  // 本番環境でのCORS問題を回避するために、クレデンシャルを含める
+  withCredentials: import.meta.env.PROD,
 });
 
 // デバッグ用：環境変数の値をログ出力
@@ -45,6 +48,7 @@ console.log("API Client Configuration:");
 console.log("PROD:", import.meta.env.PROD);
 console.log("VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
 console.log("USING BASE_URL:", baseURL);
+console.log("withCredentials:", import.meta.env.PROD);
 
 // リクエストインターセプター
 apiClient.interceptors.request.use(
@@ -57,6 +61,7 @@ apiClient.interceptors.request.use(
       fullURL: `${config.baseURL}${config.url}`,
       params: config.params,
       headers: config.headers,
+      withCredentials: config.withCredentials,
     });
     
     // 必要に応じて認証トークンなどを追加
@@ -90,6 +95,7 @@ apiClient.interceptors.response.use(
         url: error.config.url,
         method: error.config.method,
         fullURL: error.config.baseURL + error.config.url,
+        withCredentials: error.config.withCredentials,
       } : null,
       response: error.response ? {
         status: error.response.status,
