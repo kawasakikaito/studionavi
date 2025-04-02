@@ -16,7 +16,7 @@ class DisableHttpsRedirectMiddleware:
     
     def __init__(self, get_response):
         self.get_response = get_response
-        logger.info("DisableHttpsRedirectMiddleware が初期化されました")
+        logger.info("DisableHttpsRedirectMiddleware が初期化されました - バージョン2.0")
         
     def __call__(self, request):
         # リクエスト処理前の操作
@@ -26,6 +26,7 @@ class DisableHttpsRedirectMiddleware:
         # HTTPSリダイレクトを防ぐためのヘッダーを設定
         request.META['wsgi.url_scheme'] = 'http'
         request.META['HTTP_X_FORWARDED_PROTO'] = 'http'
+        logger.info(f"HTTPSリダイレクト防止: wsgi.url_scheme と HTTP_X_FORWARDED_PROTO を 'http' に設定しました")
         
         # SecurityMiddlewareの_should_redirectメソッドをモンキーパッチ
         from django.middleware.security import SecurityMiddleware
@@ -46,13 +47,14 @@ class DisableHttpsRedirectMiddleware:
             if location.startswith('https://'):
                 # リダイレクトを完全に無効化
                 del response['Location']
+                original_status = response.status_code
                 response.status_code = 200
-                logger.info(f"リダイレクトを無効化: 元のステータス={response.status_code}, URL={location}")
+                logger.info(f"リダイレクトを無効化: 元のステータス={original_status}, URL={location}, 新しいステータス=200")
                 
                 # レスポンスの内容を簡単なJSONに置き換え（APIリクエストの場合）
                 if request.path.startswith('/api/'):
                     import json
-                    response.content = json.dumps({"message": "リダイレクトを無効化しました", "original_url": location}).encode('utf-8')
+                    response.content = json.dumps({"message": "リダイレクトを無効化しました", "original_url": location, "path": request.path}).encode('utf-8')
                     response['Content-Type'] = 'application/json'
                     logger.info("APIリクエストのレスポンスをJSONに置き換えました")
         
