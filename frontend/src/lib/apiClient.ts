@@ -8,10 +8,32 @@ interface Studio {
   selfBookingStart: string;
 }
 
+// 環境変数のデバッグ情報を詳細に出力
+console.log("=== API設定デバッグ情報 ===");
+console.log("PROD:", import.meta.env.PROD);
+console.log("DEV:", import.meta.env.DEV);
+console.log("MODE:", import.meta.env.MODE);
+console.log("VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
+console.log("全環境変数:", import.meta.env);
+console.log("=========================");
+
+// ブラウザの情報を出力
+console.log("=== ブラウザ情報 ===");
+console.log("ホスト名:", window.location.hostname);
+console.log("プロトコル:", window.location.protocol);
+console.log("ポート:", window.location.port);
+console.log("パス:", window.location.pathname);
+console.log("完全なURL:", window.location.href);
+console.log("=================");
+
+const baseURL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD 
+  ? "/api" 
+  : "http://127.0.0.1:8000/api");
+
+console.log("最終的に使用するbaseURL:", baseURL);
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD 
-    ? "/api" 
-    : "http://127.0.0.1:8000/api"),
+  baseURL: baseURL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -22,7 +44,7 @@ const apiClient = axios.create({
 console.log("API Client Configuration:");
 console.log("PROD:", import.meta.env.PROD);
 console.log("VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
-console.log("USING BASE_URL:", import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8000/api"));
+console.log("USING BASE_URL:", baseURL);
 
 // リクエストインターセプター
 apiClient.interceptors.request.use(
@@ -63,7 +85,12 @@ apiClient.interceptors.response.use(
     console.error("API Response Error:", {
       message: error.message,
       code: error.code,
-      config: error.config,
+      config: error.config ? {
+        baseURL: error.config.baseURL,
+        url: error.config.url,
+        method: error.config.method,
+        fullURL: error.config.baseURL + error.config.url,
+      } : null,
       response: error.response ? {
         status: error.response.status,
         statusText: error.response.statusText,
@@ -74,14 +101,17 @@ apiClient.interceptors.response.use(
     
     if (error.response) {
       // サーバーからのエラーレスポンス
+      console.error("サーバーからエラーレスポンスを受信:", error.response);
       const errorMessage =
         error.response.data?.message || "サーバーエラーが発生しました";
       return Promise.reject(new Error(errorMessage));
     } else if (error.request) {
       // リクエストが送信されたがレスポンスがない
+      console.error("リクエスト送信後にレスポンスなし:", error.request);
       return Promise.reject(new Error("サーバーとの接続に失敗しました"));
     } else {
       // リクエスト設定時のエラー
+      console.error("リクエスト設定時のエラー:", error.message);
       return Promise.reject(
         new Error("リクエストの設定中にエラーが発生しました")
       );
@@ -90,12 +120,16 @@ apiClient.interceptors.response.use(
 );
 
 export const searchStudios = async (query: string): Promise<Studio[]> => {
+  console.log(`スタジオ検索開始: クエリ="${query}"`);
   try {
+    console.log(`APIリクエスト実行: ${baseURL}/studios/search?q=${query}`);
     const response = await apiClient.get<Studio[]>("/studios/search", {
       params: { q: query },
     });
+    console.log("スタジオ検索成功:", response.data);
     return response.data;
   } catch (error) {
+    console.error("スタジオ検索エラー:", error);
     throw error;
   }
 };
