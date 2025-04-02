@@ -26,10 +26,21 @@ console.log("パス:", window.location.pathname);
 console.log("完全なURL:", window.location.href);
 console.log("=================");
 
-// 本番環境では相対パスを使用し、開発環境では絶対URLを使用
-// 本番環境ではNginxがプロキシするので、/apiに送信するだけでよい
-const baseURL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8000/api");
+// 本番環境ではHTTPSエンドポイントを直接使用し、リダイレクト問題を回避
+let baseURL;
+if (import.meta.env.VITE_API_BASE_URL) {
+  // 環境変数が設定されている場合はそれを優先
+  baseURL = import.meta.env.VITE_API_BASE_URL;
+  console.log("環境変数からbaseURLを設定:", baseURL);
+} else if (import.meta.env.PROD) {
+  // 本番環境では、HTTPSエンドポイントを直接使用
+  baseURL = "https://studionavi-alb-837030228.ap-northeast-1.elb.amazonaws.com/api";
+  console.log("本番環境用のHTTPSエンドポイントを使用:", baseURL);
+} else {
+  // 開発環境
+  baseURL = "http://127.0.0.1:8000/api";
+  console.log("開発環境用のエンドポイントを使用:", baseURL);
+}
 
 console.log("最終的に使用するbaseURL:", baseURL);
 
