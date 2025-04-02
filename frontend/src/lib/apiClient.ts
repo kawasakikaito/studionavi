@@ -26,16 +26,23 @@ console.log("パス:", window.location.pathname);
 console.log("完全なURL:", window.location.href);
 console.log("=================");
 
-// 本番環境ではHTTPSエンドポイントを直接使用し、リダイレクト問題を回避
+// 相対パスを使用して、ブラウザのプロトコルに合わせてAPIリクエストを送信
 let baseURL;
 if (import.meta.env.VITE_API_BASE_URL) {
   // 環境変数が設定されている場合はそれを優先
-  baseURL = import.meta.env.VITE_API_BASE_URL;
+  // 絶対URLの場合はそのまま使用、相対パスの場合は先頭の/を確認
+  if (import.meta.env.VITE_API_BASE_URL.startsWith('http')) {
+    baseURL = import.meta.env.VITE_API_BASE_URL;
+  } else {
+    baseURL = import.meta.env.VITE_API_BASE_URL.startsWith('/') 
+      ? import.meta.env.VITE_API_BASE_URL 
+      : `/${import.meta.env.VITE_API_BASE_URL}`;
+  }
   console.log("環境変数からbaseURLを設定:", baseURL);
 } else if (import.meta.env.PROD) {
-  // 本番環境では、HTTPSエンドポイントを直接使用
-  baseURL = "https://studionavi-alb-837030228.ap-northeast-1.elb.amazonaws.com/api";
-  console.log("本番環境用のHTTPSエンドポイントを使用:", baseURL);
+  // 本番環境では相対パスを使用（ブラウザのプロトコルに合わせる）
+  baseURL = "/api";
+  console.log("本番環境用の相対パスを使用:", baseURL);
 } else {
   // 開発環境
   baseURL = "http://127.0.0.1:8000/api";
@@ -69,7 +76,9 @@ apiClient.interceptors.request.use(
       method: config.method,
       url: config.url,
       baseURL: config.baseURL,
-      fullURL: `${config.baseURL}${config.url}`,
+      fullURL: config.baseURL.startsWith('http') 
+        ? `${config.baseURL}${config.url}` 
+        : `${window.location.origin}${config.baseURL}${config.url}`,
       params: config.params,
       headers: config.headers,
       withCredentials: config.withCredentials,
@@ -105,7 +114,9 @@ apiClient.interceptors.response.use(
         baseURL: error.config.baseURL,
         url: error.config.url,
         method: error.config.method,
-        fullURL: error.config.baseURL + error.config.url,
+        fullURL: error.config.baseURL.startsWith('http')
+          ? `${error.config.baseURL}${error.config.url}`
+          : `${window.location.origin}${error.config.baseURL}${error.config.url}`,
         withCredentials: error.config.withCredentials,
       } : null,
       response: error.response ? {
@@ -139,7 +150,10 @@ apiClient.interceptors.response.use(
 export const searchStudios = async (query: string): Promise<Studio[]> => {
   console.log(`スタジオ検索開始: クエリ="${query}"`);
   try {
-    console.log(`APIリクエスト実行: ${baseURL}/studios/search?q=${query}`);
+    const fullUrl = baseURL.startsWith('http') 
+      ? `${baseURL}/studios/search?q=${query}` 
+      : `${window.location.origin}${baseURL}/studios/search?q=${query}`;
+    console.log(`APIリクエスト実行: ${fullUrl}`);
     const response = await apiClient.get<Studio[]>("/studios/search", {
       params: { q: query },
     });

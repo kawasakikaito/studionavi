@@ -21,7 +21,7 @@ class DisableHttpsRedirectMiddleware:
     def __call__(self, request):
         # リクエスト処理前の操作
         original_scheme = request.META.get('wsgi.url_scheme', 'http')
-        logger.debug(f"リクエスト処理前: scheme={original_scheme}, path={request.path}")
+        logger.debug(f"リクエスト処理前: scheme={original_scheme}, path={request.path}, headers={dict(request.headers)}")
         
         # HTTPSリダイレクトを防ぐためのヘッダーを設定
         request.META['wsgi.url_scheme'] = 'http'
@@ -44,15 +44,17 @@ class DisableHttpsRedirectMiddleware:
         if response.status_code in (301, 302, 307, 308) and 'Location' in response:
             location = response['Location']
             if location.startswith('https://'):
-                # HTTPSをHTTPに置き換える
-                http_location = 'http://' + location[8:]
-                response['Location'] = http_location
-                logger.info(f"HTTPSリダイレクトを修正: {location} -> {http_location}")
-            
-            # リダイレクトを完全に無効化する場合は以下のコードを使用
-            # del response['Location']
-            # response.status_code = 200
-            # logger.info(f"リダイレクトを無効化: 元のステータス={response.status_code}, URL={location}")
+                # リダイレクトを完全に無効化
+                del response['Location']
+                response.status_code = 200
+                logger.info(f"リダイレクトを無効化: 元のステータス={response.status_code}, URL={location}")
+                
+                # レスポンスの内容を簡単なJSONに置き換え（APIリクエストの場合）
+                if request.path.startswith('/api/'):
+                    import json
+                    response.content = json.dumps({"message": "リダイレクトを無効化しました", "original_url": location}).encode('utf-8')
+                    response['Content-Type'] = 'application/json'
+                    logger.info("APIリクエストのレスポンスをJSONに置き換えました")
         
         return response
     
